@@ -1,4 +1,5 @@
 "use client";
+import "./hide-scrollbar.css";
 
 import { useState, useRef, useEffect } from "react";
 import { useChainId, useConfig, useAccount, useReadContract, useSimulateContract, useWatchContractEvent, useBalance } from "wagmi";
@@ -9,6 +10,8 @@ import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { ModalWinLose } from "@/components/ModalWinLose";
 
 export default function RussianRoulette() {
+  // Функция для добавления одного тестового элемента в liveFeed
+
   // Referral loading and error state
   const [refLoading, setRefLoading] = useState(false);
   const [refError, setRefError] = useState<string | null>(null);
@@ -376,38 +379,60 @@ export default function RussianRoulette() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-950 to-black flex flex-col items-center justify-start pt-4">
       {/* Live-лента игр */}
-      <div className="w-full max-w-10xl mb-8">
-        <div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg">
-        <h2 className="text-lg font-bold text-red-200 mb-2 text-center">Live</h2>
-          <div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg">{liveFeed.length === 0 ? (
+      <div className="w-full mb-8">
+        <div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg w-full">
+          <h2 className="text-lg font-bold text-red-200 mb-2 text-center">Live</h2>
+          <div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg">
+            {liveFeed.length === 0 ? (
               <div className="text-gray-400 text-sm italic text-center">No new games</div>
             ) : (
-              <div className="flex flex-row gap-3 justify-start items-center max-w-full py-0 overflow-x-auto scrollbar-hide" style={{scrollSnapType: 'x mandatory'}}>
-                {liveFeed.map((item, idx) => {
-                  const color = item.alive ? 'bg-green-700 border-green-400' : 'bg-red-800 border-red-400';
-                  const xLabel = item.x && Number(item.x) > 0 ? `x${item.x}` : 'x0';
-                  const tooltip = `Player: ${item.player}\nSpin: ${item.spin + 1}\n${item.alive ? 'WIN' : 'LOSE'}\nAmount: ${item.amount}\nPayout: ${item.payout}\nX: ${item.x}\n${new Date(item.time).toLocaleTimeString()}`;
-                  // Ссылка на tx или на адрес игрока
-                  const link = item.txHash
-                    ? `https://testnet.sonicscan.org/tx/${item.txHash}`
-                    : `https://testnet.sonicscan.org/address/${item.player}`;
-                  return (
-                    <a
-                      key={idx}
-                      href={link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={tooltip}
-                      className={`w-12 h-12 min-w-12 min-h-12 flex flex-col items-center justify-center rounded-lg border-2 shadow transition hover:scale-105 cursor-pointer ${color}`}
-                      style={{scrollSnapAlign: 'start'}}
-                    >
-                      <span className="font-bold text-lg select-none">{xLabel}</span>
-                      <span className="text-xs font-mono select-none">{item.alive ? 'WIN' : 'LOSE'}</span>
-                    </a>
-                  );
-                })}
+              <div
+                className="flex flex-row gap-3 justify-start items-center py-0 px-1 w-full"
+                style={{
+                  width: '100%',
+                  minWidth: 0,
+                  overflowX: 'hidden',
+                }}
+              >
+                {/* Фиксированный размер квадратиков, количество зависит от ширины контейнера */}
+                {(() => {
+                  const box = 60; // фиксированный размер квадрата (px)
+                  return liveFeed.map((item, idx) => {
+                    const color = item.alive ? 'bg-green-700 border-green-400' : 'bg-red-800 border-red-400';
+                    const xLabel = item.x && Number(item.x) > 0 ? `x${item.x}` : 'x0';
+                    const tooltip = `Player: ${item.player}\nSpin: ${item.spin + 1}\n${item.alive ? 'WIN' : 'LOSE'}\nAmount: ${item.amount}\nPayout: ${item.payout}\nX: ${item.x}\n${new Date(item.time).toLocaleTimeString()}`;
+                    // Ссылка на tx или на адрес игрока
+                    const link = item.txHash
+                      ? `https://testnet.sonicscan.org/tx/${item.txHash}`
+                      : `https://testnet.sonicscan.org/address/${item.player}`;
+                    return (
+                      <a
+                        key={idx}
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={tooltip}
+                        className={`flex-shrink-0 flex flex-col items-center justify-center rounded-lg border-2 shadow transition hover:scale-105 cursor-pointer ${color}`}
+                        style={{
+                          scrollSnapAlign: 'start',
+                          flexBasis: `${box}px`,
+                          width: `${box}px`,
+                          height: `${box}px`,
+                          minWidth: `${box}px`,
+                          minHeight: `${box}px`,
+                          maxWidth: `${box}px`,
+                          maxHeight: `${box}px`,
+                        }}
+                      >
+                        <span className="font-bold text-lg select-none">{xLabel}</span>
+                        <span className="text-xs font-mono select-none">{item.alive ? 'WIN' : 'LOSE'}</span>
+                      </a>
+                    );
+                  });
+                })()}
               </div>
-            )}</div>  
+            )}
+          </div>
         </div>
       </div>
       <div className="flex flex-col md:flex-row gap-5 w-full justify-center items-stretch">
