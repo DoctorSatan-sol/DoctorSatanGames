@@ -1,13 +1,30 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useChainId, useConfig, useAccount, useReadContract, useSimulateContract, useWatchContractEvent } from "wagmi";
+import { useChainId, useConfig, useAccount, useReadContract, useSimulateContract, useWatchContractEvent, useBalance } from "wagmi";
 import { readContract, writeContract, simulateContract } from "@wagmi/core";
 import { chains, sgSAbiV2 } from "@/constants";
+import { paintswapVrfCoordinatorAbi, PAINTSWAP_VRF_COORDINATOR, CALLBACK_GAS_LIMIT } from "@/paintswapVrf";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { ModalWinLose } from "@/components/ModalWinLose";
 
 export default function RussianRoulette() {
+  // Referral loading and error state
+  const [refLoading, setRefLoading] = useState(false);
+  const [refError, setRefError] = useState<string | null>(null);
+  // Referral input and modal state
+  const [refInput, setRefInput] = useState("");
+  const [refBytes32, setRefBytes32] = useState<string>("");
+
+  // Convert string to bytes32 (utf-8, right padded)
+  function toBytes32(str: string): string {
+    const encoder = new TextEncoder();
+    let bytes = encoder.encode(str);
+    if (bytes.length > 32) bytes = bytes.slice(0, 32);
+    const padded = new Uint8Array(32);
+    padded.set(bytes);
+    return '0x' + Array.from(padded).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
 
   // Обновление глобальной статистики
   
@@ -59,7 +76,7 @@ export default function RussianRoulette() {
   });
 
   const [chargedBullets, setChargedBullets] = useState(1);
-  const [bet, setBet] = useState("1.1");
+  const [bet, setBet] = useState("1");
   const [coefficient, setCoefficient] = useState(1.14);
   const [winChance, setWinChance] = useState(83.33);
   const [started, setStarted] = useState(false);
@@ -73,7 +90,7 @@ export default function RussianRoulette() {
   const account = useAccount();
   const rouletteAddress = chains[chainId]?.roulette as `0x${string}`;
   const rouletteAbi = sgSAbiV2;
-
+  const { data: nativeBalance } = useBalance({ address: account.address });
 
   useEffect(() => {
       async function fetchGlobalStats() {
@@ -155,8 +172,22 @@ export default function RussianRoulette() {
   
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // VRF fee state
+  const [vrfFee, setVrfFee] = useState<bigint | null>(null);
+  const { data: vrfFeeData } = useReadContract({
+    abi: paintswapVrfCoordinatorAbi,
+    address: PAINTSWAP_VRF_COORDINATOR,
+    functionName: 'calculateRequestPriceNative',
+    args: [CALLBACK_GAS_LIMIT],
+    query: { enabled: true },
+  });
+  useEffect(() => {
+    if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString()));
+  }, [vrfFeeData]);
+
   async function handleStart() {
-  if (!bet || Number(bet) < 1.1 || started || isLoading) return;
+    if (!bet || Number(bet) < 1 || started || isLoading || vrfFee == null) return;
     setStarted(true);
     setIsLoading(true);
     setSpinResult(null);
@@ -164,20 +195,22 @@ export default function RussianRoulette() {
     setPendingRequestId(null);
     setErrorMsg(null);
     try {
-      // Simulation
+      // Simulation with bet + vrfFee
+      const betValue = BigInt(Math.floor(Number(bet) * 1e18));
+      const totalValue = betValue + vrfFee;
       const simulation = await simulateContract(config, {
         abi: rouletteAbi,
         address: rouletteAddress,
         functionName: 'bet',
         args: [chargedBullets],
-        value: BigInt(Math.floor(Number(bet) * 1e18)),
+        value: totalValue,
         account: account.address,
       });
       if (!simulation || !simulation.request) throw new Error('Simulation failed');
-      // Transaction
+      // Transaction with bet + vrfFee
       const tx = await writeContract(config, {
         ...simulation.request,
-        value: BigInt(Math.floor(Number(bet) * 1e18)),
+        value: totalValue,
       });
       // Wait for BetPlaced to get requestId
       setWaitForResult(true);
@@ -190,10 +223,40 @@ export default function RussianRoulette() {
         setPendingRequestId(null);
         setErrorMsg('Result timeout. Please try again.');
       }, 60000); // 60 seconds
-    } catch (e) {
+    } catch (e: any) {
       setIsLoading(false);
       setStarted(false);
-      setErrorMsg('Transaction error or cancelled');
+      // Try to show as much info as possible from simulation error
+      let msg = '';
+      // Custom error mapping
+
+      if (e && typeof e === 'object') {
+        // wagmi simulation error format
+        if (e.message && !msg.includes(e.message)) {
+          // Special case: user denied transaction signature
+          if (e.message.includes('User denied transaction signature')) {
+            msg += 'Operation cancelled by user';
+          } else {
+            // Try to extract revert reason in format Error: Reason()
+            const match = e.message.match(/Error:\s*([A-Za-z0-9_]+)\(/);
+            if (match && match[1]) {
+              msg += match[1] + '\n';
+            } else {
+              // fallback: extract first word after Error
+              const fallback = e.message.match(/Error\s+([^\s:]+)/);
+              if (fallback && fallback[1]) {
+                msg += fallback[1] + '\n';
+              } else {
+                msg += e.message + '\n';
+              }
+            }
+          }
+        }
+        // Show raw error object for debug
+      } else {
+        msg = 'Transaction error or cancelled';
+      }
+      setErrorMsg(msg.trim());
     }
   }
 
@@ -308,19 +371,18 @@ export default function RussianRoulette() {
       }
     }, [pendingRequestId]);
   
-  // ...удалён дублирующий useWatchContractEvent для BetResult...
 
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-950 to-black flex flex-col items-center justify-start pt-4">
       {/* Live-лента игр */}
       <div className="w-full max-w-10xl mb-8">
-        <div className="bg-black/70 border-2 border-red-800 rounded-xl p-3 shadow-lg">
+        <div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg">
         <h2 className="text-lg font-bold text-red-200 mb-2 text-center">Live</h2>
-          <div className="bg-black/70 border-2 border-red-800 rounded-xl p-3 shadow-lg">{liveFeed.length === 0 ? (
+          <div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg">{liveFeed.length === 0 ? (
               <div className="text-gray-400 text-sm italic text-center">No new games</div>
             ) : (
-              <div className="flex flex-row-reverse gap-2 justify-end items-center max-w-full py-2" style={{overflowX: 'hidden'}}>
+              <div className="flex flex-row gap-3 justify-start items-center max-w-full py-0 overflow-x-auto scrollbar-hide" style={{scrollSnapType: 'x mandatory'}}>
                 {liveFeed.map((item, idx) => {
                   const color = item.alive ? 'bg-green-700 border-green-400' : 'bg-red-800 border-red-400';
                   const xLabel = item.x && Number(item.x) > 0 ? `x${item.x}` : 'x0';
@@ -337,6 +399,7 @@ export default function RussianRoulette() {
                       rel="noopener noreferrer"
                       title={tooltip}
                       className={`w-12 h-12 min-w-12 min-h-12 flex flex-col items-center justify-center rounded-lg border-2 shadow transition hover:scale-105 cursor-pointer ${color}`}
+                      style={{scrollSnapAlign: 'start'}}
                     >
                       <span className="font-bold text-lg select-none">{xLabel}</span>
                       <span className="text-xs font-mono select-none">{item.alive ? 'WIN' : 'LOSE'}</span>
@@ -349,14 +412,13 @@ export default function RussianRoulette() {
       </div>
       <div className="flex flex-col md:flex-row gap-5 w-full justify-center items-stretch">
         {/* Моя статистика и глобальная статистика */}
-        <div className="flex flex-col gap-4 max-w-xs w-full mb-8 md:mb-0">
-          <div className="bg-black/60 border-2 border-red-800 rounded-xl p-6 flex flex-col justify-up shadow-lg">
+  <div className="flex flex-col gap-4 max-w-xs w-full mb-5 md:mb-0 h-[340px]">
+          <div className="bg-black/60 border-2 border-red-800 rounded-xl p-6 flex flex-col justify-between shadow-lg">
             <h2 className="text-lg font-bold text-red-200 mb-2 text-center">My Statistics</h2>
             <div className="text-gray-300 mb-1 flex justify-between"><span>Games Played:</span> <span className="font-mono">{playerStats.totalGamesPlayed}</span></div>
             <div className="text-gray-300 mb-1 flex justify-between"><span>Games Won:</span> <span className="font-mono">{playerStats.totalGamesWon}</span></div>
             <div className="text-gray-300 mb-1 flex justify-between"><span>Amount Spent:</span> <span className="font-mono">{playerStats.totalBetsAmount}</span></div>
             <div className="text-gray-300 mb-1 flex justify-between"><span>Amount Won:</span> <span className="font-mono">{playerStats.totalPayout}</span></div>
-            <div className="text-gray-300 mb-1 flex justify-between"><span>Referrals:</span> <span className="font-mono">{playerStats.totalReferrals}</span></div>
             <div className="text-gray-300 mb-1 flex justify-between"><span>ROI:</span> <span className="font-mono">{Number(playerStats.totalBetsAmount) > 0 ? ((Number(playerStats.totalPayout) / Number(playerStats.totalBetsAmount)) * 100).toFixed(1) : 0}%</span></div>
           </div>
           <div className="bg-black/60 border-2 border-yellow-800 rounded-xl p-6 flex flex-col justify-up shadow-lg">
@@ -377,34 +439,53 @@ export default function RussianRoulette() {
           </h1>
           {/* Барабан */}
           <div className="flex flex-col items-center mb-6">
-            <div className="relative w-150 h-90 flex items-center justify-center mb-4">
+            <div className="relative w-150 h-90 flex items-center justify-center mb-4" style={{marginTop: '16px'}}>
               {/* Барабан визуально */}
-              <svg
-                width="400" height="400" viewBox="0 0 160 160"
-                style={{
-                  transition: 'transform 2.5s cubic-bezier(.4,2,.3,1)',
-                  transform: spinResult !== null ? `rotate(${(spinResult / TOTAL_CHAMBERS) * 360}deg)` : 'none',
-                }}
-              >
-                <circle cx="80" cy="80" r="75" fill="#222" stroke="#444" strokeWidth="6" />
-                {[...Array(TOTAL_CHAMBERS)].map((_, i) => {
-                  const angle = (i / TOTAL_CHAMBERS) * 2 * Math.PI;
-                  const x = 80 + 55 * Math.cos(angle - Math.PI / 2);
-                  const y = 80 + 55 * Math.sin(angle - Math.PI / 2);
-                  return (
-                    <circle
-                      key={i}
-                      cx={x}
-                      cy={y}
-                      r="16"
-                      fill={i < chargedBullets ? "#e11d48" : "#444"}
-                      stroke="#222"
-                      strokeWidth="3"
-                    />
-                  );
-                })}
-                <circle cx="80" cy="80" r="26" fill="#111" stroke="#333" strokeWidth="1" />
-              </svg>
+              <div style={{position: 'relative', width: 400, height: 400}}>
+                {/* Pointer/indicator at top, always visible */}
+                <svg width="400" height="40" style={{position: 'absolute', left: 0, top: -16, zIndex: 2, pointerEvents: 'none'}}>
+                  <defs>
+                    <linearGradient id="pointer-gradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#e11d48" />
+                      <stop offset="100%" stopColor="#111" />
+                    </linearGradient>
+                  </defs>
+                  <polygon points="180,8 220,8 200,38" fill="url(#pointer-gradient)" stroke="#7f1d1d" strokeWidth="4" />
+                </svg>
+                <svg
+                  width="400" height="400" viewBox="0 0 160 160"
+                  style={{
+                    transition: 'transform 2.5s cubic-bezier(.4,2,.3,1)',
+                    transform: spinResult !== null ? `rotate(${(spinResult / TOTAL_CHAMBERS) * 360}deg)` : 'none',
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    zIndex: 1,
+                  }}
+                >
+                  {/* Outer drum */}
+                  <circle cx="80" cy="80" r="75" fill="#222" stroke="#444" strokeWidth="6" />
+                  {/* Drum chambers */}
+                  {[...Array(TOTAL_CHAMBERS)].map((_, i) => {
+                    const angle = (i / TOTAL_CHAMBERS) * 2 * Math.PI;
+                    const x = 80 + 55 * Math.cos(angle - Math.PI / 2);
+                    const y = 80 + 55 * Math.sin(angle - Math.PI / 2);
+                    return (
+                      <circle
+                        key={i}
+                        cx={x}
+                        cy={y}
+                        r="16"
+                        fill={i < chargedBullets ? "#e11d48" : "#444"}
+                        stroke="#222"
+                        strokeWidth="3"
+                      />
+                    );
+                  })}
+                  {/* Center circle */}
+                  <circle cx="80" cy="80" r="26" fill="#111" stroke="#333" strokeWidth="1" />
+                </svg>
+              </div>
             </div>
             {/* Стрелки и выбор заряжаемых патронов */}
             <div className="flex items-center gap-4 mb-2">
@@ -436,48 +517,48 @@ export default function RussianRoulette() {
             </div>
           </div>
         </div>
-        <div className="w-full max-w-md md:ml-0 md:mt-0 mt-0 flex flex-col justify-start">
-          <div className="bg-black/70 border-2 border-red-800 rounded-xl p-3 shadow-lg flex flex-col gap-3 mb-4">
-            <div className="text-gray-300 text-lg mb-1">Chance to win: <span className="font-bold text-green-400">{winChance}%</span></div>
-            <div className="text-gray-300 text-lg">Coefficient: <span className="font-bold text-red-400">x{coefficient}</span></div>
+  <div className="w-full max-w-xs md:ml-0 md:mt-0 mt-0 flex flex-col justify-start h-[340px]"> 
+          <div className="bg-black/70 border-2 border-red-800 rounded-xl p-3 shadow-lg flex flex-col gap-2 mb-4 justify-between" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
+            <div className="text-gray-300 text-base mb-0.5">Chance to win: <span className="font-bold text-green-400">{winChance}%</span></div>
+            <div className="text-gray-300 text-base">Coefficient: <span className="font-bold text-red-400">x{coefficient}</span></div>
             {bet && Number(bet) > 0 && (
-              <div className="text-gray-300 text-lg mt-1">Possible winnings: <span className="font-bold text-green-400">{((Number(bet) * TOTAL_CHAMBERS) / (TOTAL_CHAMBERS - chargedBullets) * 0.95).toFixed(2)}</span></div>
+              <div className="text-gray-300 text-base mt-0.5">Possible winnings: <span className="font-bold text-green-400">{((Number(bet) * TOTAL_CHAMBERS) / (TOTAL_CHAMBERS - chargedBullets) * 0.95).toFixed(2)}</span></div>
             )}
             {/* Новое окно для ставки и кнопки старта */}
-            <div className="flex flex-col gap-2 mt-2">
-              <div className="flex items-center gap-2 justify-center">
-                <div className="flex items-center w-full bg-gradient-to-r from-black to-red-900 border border-red-700 rounded-xl px-2 py-2 shadow-inner">
+            <div className="flex flex-col gap-1 mt-2">
+              <div className="flex items-center gap-1 justify-center">
+                <div className="flex items-center w-full bg-gradient-to-r from-black to-red-900 border border-red-700 rounded-xl px-1 py-1 shadow-inner">
                   <input
                     type="number"
-                    className="w-full text-center bg-black/60 border-none text-red-100 rounded-l-xl px-4 py-2 text-lg font-mono focus:outline-none appearance-none no-arrows"
+                    className="w-full text-center bg-black/60 border-none text-red-100 rounded-l-xl px-2 py-1 text-base font-mono focus:outline-none appearance-none no-arrows"
                     placeholder="Enter bet amount"
                     value={bet}
-                    min={1.1}
+                    min={1}
                     step={0.1}
                     onChange={e => {
                       const value = e.target.value;
-                      if (Number(value) < 1.1 && value !== "") {
-                        setBet("1.1");
+                      if (Number(value) < 1 && value !== "") {
+                        setBet("1");
                       } else {
                         setBet(value);
                       }
                     }}
                     disabled={started}
                   />
-                  <div className="flex gap-2 ml-2">
+                  <div className="flex gap-1 ml-1">
                     <button
                       type="button"
-                      className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-black to-red-900 border border-red-700 rounded-full text-xl text-red-100 hover:from-red-900 hover:to-black hover:text-white disabled:opacity-60 transition-all duration-150 shadow"
+                      className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-black to-red-900 border border-red-700 rounded-full text-base text-red-100 hover:from-red-900 hover:to-black hover:text-white disabled:opacity-60 transition-all duration-150 shadow"
                       style={{zIndex:2}}
                       onClick={() => setBet(prev => {
                         const val = Number(prev) || 0;
-                        return val > 1.1 ? (val - 0.1).toFixed(2) : "1.1";
+                        return val > 1 ? (val - 0.1).toFixed(2) : "1";
                       })}
                       disabled={started}
                     >-</button>
                     <button
                       type="button"
-                      className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-black to-red-900 border border-red-700 rounded-full text-xl text-red-100 hover:from-red-900 hover:to-black hover:text-white disabled:opacity-60 transition-all duration-150 shadow"
+                      className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-black to-red-900 border border-red-700 rounded-full text-base text-red-100 hover:from-red-900 hover:to-black hover:text-white disabled:opacity-60 transition-all duration-150 shadow"
                       style={{zIndex:2}}
                       onClick={() => setBet(prev => {
                         const val = Number(prev) || 0;
@@ -485,39 +566,39 @@ export default function RussianRoulette() {
                       })}
                       disabled={started}
                     >+</button>
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-xs bg-red-900/70 hover:bg-red-800 text-red-200 rounded ml-1 font-bold border border-red-700 shadow"
+                      style={{zIndex:2}}
+                      onClick={() => {
+                        // Half of balance, but not less than 1
+                        if (nativeBalance) {
+                          const half = (Math.max(0, parseFloat(nativeBalance.formatted)) / 2).toFixed(3);
+                          setBet(Number(half) < 1 ? "1" : half);
+                        }
+                      }}
+                      disabled={started || !nativeBalance}
+                    >½</button>
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-xs bg-red-900/70 hover:bg-red-800 text-red-200 rounded font-bold border border-red-700 shadow"
+                      style={{zIndex:2}}
+                      onClick={() => {
+                        // Max balance minus 0.1, но не меньше 1
+                        if (nativeBalance) {
+                          const max = Math.max(0, parseFloat(nativeBalance.formatted) - 0.1).toFixed(3);
+                          setBet(Number(max) < 1 ? "1" : max);
+                        }
+                      }}
+                      disabled={started || !nativeBalance}
+                    >MAX</button>
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 justify-center mt-2">
-                <button
-                  className="px-3 py-1.5 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 flex items-center gap-1 disabled:opacity-60"
-                  onClick={() => setBet("1.1")}
-                  disabled={started}
-                  title="Minimum bet"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="inline"><text x="12" y="16" textAnchor="middle" fontSize="13" fontWeight="bold" fill="white">min</text></svg>
-                </button>
-                <button
-                  className="px-3 py-1.5 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 flex items-center gap-1 disabled:opacity-60"
-                  onClick={() => setBet((prev) => (Number(prev) > 0 ? Math.max((Number(prev) / 2), 1.1).toFixed(2) : "1.1"))}
-                  disabled={started || !bet || Number(bet) <= 1.1}
-                  title="Half of current bet"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="inline"><text x="12" y="16" textAnchor="middle" fontSize="15" fontWeight="bold" fill="white">½</text></svg>
-                </button>
-                <button
-                  className="px-3 py-1.5 bg-gradient-to-r from-red-700 to-red-900 border border-red-500 rounded-lg text-xs text-white font-bold shadow hover:from-red-600 hover:to-red-800 transition-all duration-150 flex items-center gap-1 disabled:opacity-60"
-                  onClick={() => setBet("10")}
-                  disabled={started}
-                  title="Maximum bet"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="inline"><text x="12" y="16" textAnchor="middle" fontSize="13" fontWeight="bold" fill="white">max</text></svg>
-                </button>
-              </div>
               <button
-                className="w-full px-6 py-3 bg-gradient-to-r from-red-900 to-black border border-red-700 text-red-200 rounded-lg hover:bg-gradient-to-r hover:from-red-800 hover:to-black transition-all font-bold tracking-tight text-lg mb-2 disabled:opacity-60"
+                className="w-full px-4 py-2 bg-gradient-to-r from-red-900 to-black border border-red-700 text-red-200 rounded-lg hover:bg-gradient-to-r hover:from-red-800 hover:to-black transition-all font-bold tracking-tight text-base mb-1 disabled:opacity-60"
                 onClick={handleStart}
-                disabled={started || isLoading || !bet || Number(bet) < 1.1}
+                disabled={started || isLoading || !bet || Number(bet) < 1}
               >
                 {isLoading ? 'Spinning...' : 'Start'}
               </button>
@@ -536,29 +617,74 @@ export default function RussianRoulette() {
           </div>
         {/* Referral system UI separate block */}
         <div className="w-half max-w-4xl mb-8">
-          <div className="bg-black/60 border border-yellow-700 rounded-xl p-4 flex flex-col gap-3">
-            <h3 className="text-yellow-300 text-lg font-bold mb-2 text-center">Referral System</h3>
+          <div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
+            <h3 className="text-yellow-300 text-lg font-bold mb-1 text-center">Referral System</h3>
             <div className="flex flex-col md:flex-row gap-2 items-center justify-center">
               <input
                 type="text"
-                className="w-40 text-center bg-black/80 border border-gray-700 text-gray-100 rounded-lg px-2 py-1 text-base font-mono focus:outline-none"
+                maxLength={32}
+                className="text-center bg-black/80 border border-gray-700 text-gray-100 rounded-lg py-1 text-base font-mono focus:outline-none"
+                style={{ width: '520px', paddingLeft: 0, paddingRight: 0, fontFamily: 'monospace' }}
                 placeholder="Enter referral code"
                 disabled={started}
+                value={refInput}
+                onChange={e => setRefInput(e.target.value)}
               />
-              <button
+              
+            </div>
+            <button
                 className="px-4 py-1.5 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 disabled:opacity-60"
-                disabled={started}
-              >Apply</button>
+                disabled={started || refLoading}
+                onClick={async () => {
+                  setRefError(null);
+                  setRefLoading(true);
+                  const bytes32 = toBytes32(refInput);
+                  setRefBytes32(bytes32);
+                  try {
+                    await writeContract(config, {
+                      abi: rouletteAbi,
+                      address: rouletteAddress,
+                      functionName: 'applyReferralCode',
+                      args: [bytes32],
+                      account: account.address,
+                    });
+                  } catch (e: any) {
+                    setRefError(e?.message || 'Error applying referral code');
+                  }
+                  setRefLoading(false);
+                }}
+              >{refLoading ? 'Applying...' : 'Apply'}</button>
               <button
                 className="px-4 py-1.5 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 disabled:opacity-60"
-                disabled={started}
-              >Create</button>
-            </div>
-            <div className="text-gray-300 text-sm mt-2">Your referrer: <span className="font-mono text-yellow-200">---</span></div>
-            <div className="text-gray-300 text-sm mt-1">Your referrals:</div>
-            <ul className="text-xs text-yellow-100 font-mono pl-4 list-disc">
-              <li>---</li>
-            </ul>
+                disabled={started || refLoading}
+                onClick={async () => {
+                  setRefError(null);
+                  setRefLoading(true);
+                  const bytes32 = toBytes32(refInput);
+                  setRefBytes32(bytes32);
+                  try {
+                    await writeContract(config, {
+                      abi: rouletteAbi,
+                      address: rouletteAddress,
+                      functionName: 'createReferralCode',
+                      args: [bytes32],
+                      account: account.address,
+                    });
+                  } catch (e: any) {
+                    setRefError(e?.message || 'Error creating referral code');
+                  }
+                  setRefLoading(false);
+                }}
+              >{refLoading ? 'Creating...' : 'Create'}</button>
+            {/* Show bytes32 value for debug (can be removed later) */}
+            {refBytes32 && (
+              <div className="text-xs text-gray-400 font-mono break-all mt-2">Bytes32: {refBytes32}</div>
+            )}
+            {refError && (
+              <div className="text-xs text-red-400 font-mono mt-1">{refError}</div>
+            )}
+            <div className="text-gray-300 text-sm mt-0">Your referrer: <span className="font-mono text-yellow-200">---</span></div>
+            <div className="text-gray-300 text-sm mt-0">Referrals: <span className="font-mono text-yellow-200">{playerStats.totalReferrals}</span></div>
           </div>
         </div>
         </div>
