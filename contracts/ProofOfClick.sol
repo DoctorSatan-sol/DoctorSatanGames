@@ -12,6 +12,12 @@ contract POC is PaintswapVRFConsumer, ERC20 {
     error InsufficientContractBalance();
     error NothingToBurn();
     error TransferFailed();
+    error ReferralCodeAlreadyExists();
+    error ReferrerAlreadySet();
+    error ReferralCodeNotFound();
+    error CannotBeOwnReferrer();
+    error UserAlreadyHasCode();
+    error InvalidBatchSize();
 
     uint256 public maxSupply;
     uint256 public currentReward;
@@ -19,18 +25,26 @@ contract POC is PaintswapVRFConsumer, ERC20 {
     uint256 public lastHalvingRound;
     uint256 public lastRoundTs;
     address public liquidityVault;
+    uint256 public totalClicks;
 
     uint256 public constant INITIAL_REWARD          = 666 * 1e18;
     uint256 public constant HALVING_INTERVAL_ROUNDS = 50050;
     uint256 public constant ROUND_DURATION          = 60;
-    uint256 public constant FEE                     = 0.1 ether;
+    uint256 public constant FEE                     = 0.01 ether;
     uint256 public constant LIQUIDITY_SHARE         = 5;
     uint32  public constant CALLBACK_GAS_LIMIT      = 200_000;
+    uint256 public constant MAX_BATCH_SIZE = 500;
 
     mapping(uint256 => mapping(uint256 => address)) public players;
     mapping(uint256 => uint256) public playerCount;
     mapping(uint256 => uint256) private requestToRoundId;
     mapping(uint256 => uint256) private rewardPerRound;
+    mapping(address => uint256) public totalUserClicks;
+    mapping(address => uint256) public totalUserWins;
+    mapping(address => uint256) public totalUserReferrals;
+    mapping(bytes32 => address) public referralCodeOwner;
+    mapping(address => bytes32) public referralCodeOf;
+    mapping(address => address) public referrerOf;
 
     event Clicked(uint256 indexed roundId, address indexed player);
     event RoundRequested(uint256 indexed requestId, uint256 indexed roundId, uint256 playersCount, uint256 reward);
@@ -38,7 +52,7 @@ contract POC is PaintswapVRFConsumer, ERC20 {
     event Burned(address indexed burner, uint256 amount, uint256 ethOut);
 
     constructor(address vrfCoordinatorAddress, address _vaultAddress)
-        ERC20("SatanGames S Token", "sgS")
+        ERC20("Clicks Token", "C")
         PaintswapVRFConsumer(vrfCoordinatorAddress)
     {
         maxSupply = 66_666_666 * 1e18;
@@ -49,7 +63,7 @@ contract POC is PaintswapVRFConsumer, ERC20 {
         lastHalvingRound = 0;
     }
 
-    function Click() external payable {
+    function _click() public payable {
         if (msg.value < FEE) revert FeeTooLow();
 
         bool timeIsUp = (block.timestamp >= lastRoundTs + ROUND_DURATION);
@@ -88,15 +102,34 @@ contract POC is PaintswapVRFConsumer, ERC20 {
         playerCount[roundId] = idx + 1;
 
         emit Clicked(roundId, msg.sender);
+        totalClicks += 1;
+        totalUserClicks[msg.sender] += 1;
 
         uint256 liquidityAmount = (FEE * LIQUIDITY_SHARE) / 100;
         (bool ok, ) = payable(liquidityVault).call{value: liquidityAmount}("");
         if (!ok) revert FeeTransferFailed();
 
-        uint256 change = msg.value - FEE;
-        if (change > 0) {
-            (ok, ) = payable(msg.sender).call{value: change}("");
-            if (!ok) revert RefundFailed();
+        address referrer = referrerOf[msg.sender];
+        uint256 cashback;
+
+        if (referrer != address(0)) {
+            cashback    = (FEE * 5)  / 10000;  // 0.05%
+            if (totalUserClicks[msg.sender] % 100 == 0) {
+            idx = playerCount[roundId];
+            players[roundId][idx] = referrer;
+            playerCount[roundId] = idx + 1;
+        }
+            (ok, ) = payable(msg.sender).call{value: cashback}("");
+            if (!ok) revert FeeTransferFailed();
+        }
+    }
+
+    function batchClick(uint256 n) external payable {
+        if (n == 0 || n > MAX_BATCH_SIZE) revert InvalidBatchSize();
+        if (msg.value < FEE * n) revert FeeTooLow();
+
+        for (uint256 i = 0; i < n; i += 1) {
+            _click();
         }
     }
 
@@ -137,6 +170,7 @@ contract POC is PaintswapVRFConsumer, ERC20 {
             }
             if (reward > 0) {
                 _mint(winner, reward);
+                totalUserWins[winner] += 1;
                 emit WinnerMinted(requestId, resolvedRound, winner, reward);
             }
         }
@@ -148,5 +182,44 @@ contract POC is PaintswapVRFConsumer, ERC20 {
 
     function nextHalvingRound() external view returns (uint256) {
         return lastHalvingRound + HALVING_INTERVAL_ROUNDS;
+    }
+
+    function createReferralCode(bytes32 _code) public {
+        if (referralCodeOf[msg.sender] != bytes32(0)) {
+            revert UserAlreadyHasCode();
+        }
+        if (referralCodeOwner[_code] != address(0)) {
+            revert ReferralCodeAlreadyExists();
+        }
+
+        referralCodeOwner[_code] = msg.sender;
+        referralCodeOf[msg.sender] = _code;
+    }
+
+    function applyReferralCode(bytes32 _code) public {
+        address referrerAddress = referralCodeOwner[_code];
+
+        if (referrerAddress == msg.sender) {
+            revert CannotBeOwnReferrer();
+        }
+        if (referrerAddress == address(0)) {
+            revert ReferralCodeNotFound();
+        }
+        if (referrerOf[msg.sender] != address(0)) {
+            revert ReferrerAlreadySet();
+        }
+        
+        referrerOf[msg.sender] = referrerAddress;
+        totalUserReferrals[referrerAddress] += 1;
+    }
+
+    function getReferralCodeOf(address _user) public view returns(bytes32) {
+        return referralCodeOf[_user];
+    }
+    function getAddressByCode(bytes32 _code) public view returns(address) {
+        return referralCodeOwner[_code];
+    }
+    function getReferrerOf(address _user) public view returns(address) {
+        return referrerOf[_user];
     }
 }
