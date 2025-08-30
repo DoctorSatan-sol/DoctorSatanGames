@@ -1,0 +1,151 @@
+{
+	"compiler": {
+		"version": "0.8.30+commit.73712a01"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_amount",
+						"type": "uint256"
+					}
+				],
+				"name": "decreaseReserve",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getLiquidity",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_amount",
+						"type": "uint256"
+					}
+				],
+				"name": "increaseReserve",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_winner",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_amount",
+						"type": "uint256"
+					}
+				],
+				"name": "payout",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/RussianRoullete.sol": "ILiquidityVault"
+		},
+		"evmVersion": "prague",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"@openzeppelin/contracts/access/Ownable.sol": {
+			"keccak256": "0xff6d0bb2e285473e5311d9d3caacb525ae3538a80758c10649a4d61029b017bb",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://8ed324d3920bb545059d66ab97d43e43ee85fd3bd52e03e401f020afb0b120f6",
+				"dweb:/ipfs/QmfEckWLmZkDDcoWrkEvMWhms66xwTLff9DDhegYpvHo1a"
+			]
+		},
+		"@openzeppelin/contracts/security/ReentrancyGuard.sol": {
+			"keccak256": "0xa535a5df777d44e945dd24aa43a11e44b024140fc340ad0dfe42acf4002aade1",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://41319e7f621f2dc3733511332c4fd032f8e32ad2aa7fd6f665c19741d9941a34",
+				"dweb:/ipfs/QmcYR3bd862GD1Bc7jwrU9bGxrhUu5na1oP964bDCu2id1"
+			]
+		},
+		"@openzeppelin/contracts/utils/Context.sol": {
+			"keccak256": "0x493033a8d1b176a037b2cc6a04dad01a5c157722049bbecf632ca876224dd4b2",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://6a708e8a5bdb1011c2c381c9a5cfd8a9a956d7d0a9dc1bd8bcdaf52f76ef2f12",
+				"dweb:/ipfs/Qmax9WHBnVsZP46ZxEMNRQpLQnrdE4dK8LehML1Py8FowF"
+			]
+		},
+		"@paintswap/vrf/contracts/PaintswapVRFConsumer.sol": {
+			"keccak256": "0xdefecf647e6ea3284c0e41fc72b08559661d1dc4b6a3d9988325cd11173f9139",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://1fad97744d1fc398a844cde07a845e2ccda64e03f58f8d077de99ff7cb98e121",
+				"dweb:/ipfs/QmceonZfb4mPY23yq4eTXupNNPdXeMLgAk8hmpdjSrj6LF"
+			]
+		},
+		"@paintswap/vrf/contracts/interfaces/IPaintswapVRFConsumer.sol": {
+			"keccak256": "0x0c266266faa3223f24913ba79232558b0d4a4d415dc9b7f1f4c444767977485c",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://7d9023a63870ed706b12a1c6d6d429511cd4df23f0de482f8abdef0e78d11b99",
+				"dweb:/ipfs/QmNoCywrmrX7gCqQgLSmasJ2G3RDX4LYzks2XG7qKkSH7x"
+			]
+		},
+		"@paintswap/vrf/contracts/interfaces/IPaintswapVRFCoordinator.sol": {
+			"keccak256": "0x496c76c11862c9d689e88f982f8e4c592c60b860eb66cc96e767f1148f583681",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://86dc962111b535627f179d7120033da364a0d41489ad58b16ce9842df490283d",
+				"dweb:/ipfs/QmbxHks3Nd4VUfZp1nPCVjZ4yCEWquu5vB6CfdJMm7jTQx"
+			]
+		},
+		"contracts/RussianRoullete.sol": {
+			"keccak256": "0xb0560fd94363f938c168f2b781dc17cf9a04577a804d2101c6e60b3213df4fd3",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://f8a7a2735dc4bc4f2968912bec722bbf8aaca5c0f2605ff14c6e555bb926cb98",
+				"dweb:/ipfs/QmdzLJuWXPqBnzQqoK2BPr6zbeSyqih69HP5CzobyTVsX8"
+			]
+		}
+	},
+	"version": 1
+}

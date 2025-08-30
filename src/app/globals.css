@@ -34,3 +34,25 @@ body {
 .no-arrows[type="number"] {
   -moz-appearance: textfield;
 }
+
+/* Custom styles for the range slider thumb */
+.custom-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;      /* Увеличили размер */
+  height: 24px;     /* Увеличили размер */
+  background: #ef4444; /* Сделали красным */
+  border-radius: 50%;
+  cursor: pointer;
+  margin-top: -9px;   /* Центрируем на дорожке */
+  border: 2px solid #fecaca;
+}
+
+.custom-range-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: #ef4444;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid #fecaca;
+}

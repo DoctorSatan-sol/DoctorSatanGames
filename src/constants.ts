@@ -12,7 +12,7 @@ export const chains: ContractsConfig = {
     57054: {
         pool: "0x0cbd4CB3745ACC4d05Eb07bF2a2c827857E609B5",
         chainlink: "0xC13a2Af6076E1dc5673eA9f3476a60299eADf7AE",
-        roulette: "0x5D7E3028B81709066C0f0f396b9B04e7e8b17C63",
+        roulette: "0x43f29F105C208582C8737c92823749fDc99e6da5",
 		poc:"0x2cccF4be8C07068454979B033649EbA054E148e1",
         no_check: null,
     },

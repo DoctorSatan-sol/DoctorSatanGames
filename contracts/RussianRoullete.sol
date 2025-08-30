@@ -11,6 +11,7 @@ interface ILiquidityVault {
     function getLiquidity() external view returns (uint256);
     function increaseReserve(uint256 _amount) external;
     function decreaseReserve(uint256 _amount) external;
+    function getReservedForBets() external view returns (uint256);
 }
 
 error InvalidBulletCount();
@@ -56,7 +57,7 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
     uint256 public houseFeeBps = 500; // 5%
     uint256 public constant MAX_HOUSE_FEE_BPS = 2000;
     uint32 public constant CALLBACK_GAS_LIMIT = 200_000;
-    uint256 public maxPayoutBps = 1000; // 10%
+    uint256 public maxPayoutBps = 500; // 5%
     uint256 public constant MAX_PAYOUT_BPS = 5000;
     uint256 public totalBets;
     uint256 public totalPayout;
@@ -84,8 +85,8 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
         }
 
         uint256 vaultLiquidity = liquidityVault.getLiquidity();
-        uint256 potentialFairPayout = (stake * 6) / (6 - bullets);
-        uint256 maxAllowedPayout = (vaultLiquidity * maxPayoutBps) / 10000;
+        uint256 potentialFairPayout = (((stake * 6) / (6 - bullets)) * (10000 - houseFeeBps)) / 10000;
+        uint256 maxAllowedPayout = ((vaultLiquidity * maxPayoutBps) / 10000) - liquidityVault.getReservedForBets();
 
         if (potentialFairPayout > maxAllowedPayout) {
             revert PayoutExceedsLimit();
@@ -121,7 +122,7 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
         }
         
         bets[requestId] = Bet(msg.sender, stake, bullets);
-        liquidityVault.increaseReserve(stake);
+        liquidityVault.increaseReserve(potentialFairPayout);
         totalBets += stake;
         totalGamesPlayed += 1;
         playerInfo[msg.sender].totalBetsAmount += stake;
@@ -134,15 +135,14 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
         if (b.player == address(0)) {
             revert BetNotFound();
         }
+        uint256 reservedAmount = (((b.amount * 6) / (6 - b.bullets)) * (10000 - houseFeeBps)) / 10000;
 
         uint256 spin = randomWords[0] % 6;
         bool alive = spin >= b.bullets;
         uint256 payout = 0;
 
         if (alive) {
-            uint256 fairPayout = (b.amount * 6) / (6 - b.bullets);
-            uint256 fee = (fairPayout * houseFeeBps) / 10000;
-            payout = fairPayout - fee;
+            payout = reservedAmount; 
             playerInfo[b.player].totalGamesWon += 1;
             totalGamesWon += 1;
         }
@@ -154,7 +154,7 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
             totalPayout += payout;
             playerInfo[b.player].totalPayout += payout;
         }
-        liquidityVault.decreaseReserve(b.amount);
+        liquidityVault.decreaseReserve(reservedAmount);
         emit BetResult(requestId, b.player, alive, spin, b.amount, payout);
     }
 

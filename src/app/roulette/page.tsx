@@ -8,10 +8,31 @@ import { chains, sgSAbiV2 } from "@/constants";
 import { paintswapVrfCoordinatorAbi, PAINTSWAP_VRF_COORDINATOR, CALLBACK_GAS_LIMIT } from "@/paintswapVrf";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { ModalWinLose } from "@/components/ModalWinLose";
-
-// FIX: Corrected import path
 import { useGameWalletContext } from "@/components/GameWalletContext";
-import { ethers } from "ethers";
+import { ethers, Log } from "ethers";
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css'; // Обязательно должен быть этот импорт!
+
+function decodeContractError(error: any, abi: any[]): string {
+    let message = "Transaction failed for an unknown reason.";
+    if (typeof error !== 'object' || error === null) return message;
+    if (error.data) {
+        try {
+            const iface = new ethers.Interface(abi);
+            const decodedError = iface.parseError(error.data);
+            if (decodedError) return decodedError.name;
+        } catch (e) {}
+    }
+    if (error.reason) return error.reason;
+    if (error.message) {
+        if (error.message.includes('User denied transaction signature')) return 'Transaction rejected by user.';
+        const match = error.message.match(/Error:\s*([A-Za-z0-9_]+)\(/);
+        if (match && match[1]) return match[1];
+        message = error.message;
+    }
+    if (error.shortMessage) return error.shortMessage;
+    return message;
+}
 
 export default function RussianRoulette() {
     const { useGameWallet } = useGameWalletContext();
@@ -19,16 +40,13 @@ export default function RussianRoulette() {
     const [refLoading, setRefLoading] = useState(false);
     const [refError, setRefError] = useState<string | null>(null);
     const [refInput, setRefInput] = useState("");
-    const [refBytes32, setRefBytes32] = useState<string>("");
     
     function toBytes32(str: string): string {
         const encoder = new TextEncoder();
         let bytes = encoder.encode(str);
         if (bytes.length > 32) bytes = bytes.slice(0, 32);
-        // FIX: Changed UintArray to the correct Uint8Array
         const padded = new Uint8Array(32);
         padded.set(bytes);
-        // FIX: Added type '(b: number)' to fix 'unknown' type error
         return '0x' + Array.from(padded).map((b: number) => b.toString(16).padStart(2, '0')).join('');
     }
 
@@ -37,15 +55,8 @@ export default function RussianRoulette() {
     const MAX_CHARGED = 5;
 
     type LiveFeedItem = {
-        player: string;
-        alive: boolean;
-        spin: number;
-        payout: string;
-        amount?: string;
-        x?: string;
-        time: number;
-        txHash?: string;
-        requestId?: string;
+        player: string; alive: boolean; spin: number; payout: string;
+        amount?: string; x?: string; time: number; txHash?: string; requestId?: string;
     };
 
     const [globalStats, setGlobalStats] = useState({ totalBets: "0", totalPayout: "0", totalGamesPlayed: "0", totalGamesWon: "0", totalGamesLost: "0" });
@@ -59,7 +70,10 @@ export default function RussianRoulette() {
     const [isWin, setIsWin] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [liveFeed, setLiveFeed] = useState<LiveFeedItem[]>([]);
-    
+    const [gamesToPlay, setGamesToPlay] = useState(1);
+    const [isMultiBetting, setIsMultiBetting] = useState(false);
+    const [multiBetProgress, setMultiBetProgress] = useState({ current: 0, total: 0 });
+
     const chainId = useChainId();
     const config = useConfig();
     const account = useAccount();
@@ -78,17 +92,71 @@ export default function RussianRoulette() {
 
     const [vrfFee, setVrfFee] = useState<bigint | null>(null);
     const { data: vrfFeeData } = useReadContract({
-        abi: paintswapVrfCoordinatorAbi,
-        address: PAINTSWAP_VRF_COORDINATOR,
-        functionName: 'calculateRequestPriceNative',
-        args: [CALLBACK_GAS_LIMIT],
+        abi: paintswapVrfCoordinatorAbi, address: PAINTSWAP_VRF_COORDINATOR,
+        functionName: 'calculateRequestPriceNative', args: [CALLBACK_GAS_LIMIT],
         query: { enabled: true },
     });
     useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [vrfFeeData]);
+    
+    const [spinAngle, setSpinAngle] = useState(0);
 
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+    async function startMultiBetSession() {
+        if (!bet || Number(bet) < 1 || started || isLoading || vrfFee == null) return;
+        const sessionKey = sessionStorage.getItem('gameWalletSessionKey');
+        if (!sessionKey) {
+            setErrorMsg("Game Wallet is not unlocked.");
+            return;
+        }
+
+        setIsMultiBetting(true);
+        setIsLoading(true);
+        setStarted(true);
+        setErrorMsg(null);
+        setMultiBetProgress({ current: 0, total: gamesToPlay });
+
+        const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+        const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+        const gameWallet = new ethers.Wallet(sessionKey, provider);
+        const rouletteContract = new ethers.Contract(rouletteAddress, rouletteAbi, gameWallet);
+        
+        try {
+            const startBalance = await provider.getBalance(gameWallet.address);
+            const betValue = ethers.parseEther(bet);
+            const totalValuePerTx = betValue + vrfFee;
+            
+            if (startBalance < totalValuePerTx * BigInt(gamesToPlay)) {
+                throw new Error("Insufficient funds for the entire session.");
+            }
+
+            for (let i = 0; i < gamesToPlay; i++) {
+                setMultiBetProgress(prev => ({ ...prev, current: i + 1 }));
+                const tx = await rouletteContract.bet(chargedBullets, { value: totalValuePerTx });
+                await tx.wait(); // Ждем подтверждения каждой транзакции перед следующей
+            }
+
+            setErrorMsg("All games played. Waiting for final results...");
+            await delay(15000); // Ждем 15 секунд, чтобы все результаты от VRF успели обработаться
+
+            const endBalance = await provider.getBalance(gameWallet.address);
+            const profit = endBalance - startBalance;
+            const profitInEther = ethers.formatEther(profit);
+            
+            setErrorMsg(`Multi-bet finished! Total profit: ${parseFloat(profitInEther).toFixed(4)} S`);
+
+        } catch (e: any) {
+            const decodedMessage = decodeContractError(e, rouletteAbi);
+            setErrorMsg(`Error during multi-bet: ${decodedMessage}`);
+        } finally {
+            setIsMultiBetting(false);
+            setIsLoading(false);
+            setStarted(false);
+        }
+    }
+    
     async function handleGameWalletBet() {
         if (!bet || Number(bet) < 1 || started || isLoading || vrfFee == null) return;
-
         const sessionKey = sessionStorage.getItem('gameWalletSessionKey');
         if (!sessionKey) {
             setErrorMsg("Game Wallet is selected but not unlocked.");
@@ -101,42 +169,41 @@ export default function RussianRoulette() {
         setIsWin(null);
         setPendingRequestId(null);
         setErrorMsg(null);
-
+        
         try {
             const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
             const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
             const gameWallet = new ethers.Wallet(sessionKey, provider);
-            
             const betValue = ethers.parseEther(bet);
             const totalValue = betValue + vrfFee;
+            const balance = await provider.getBalance(gameWallet.address);
+            if (balance < totalValue) throw new Error(`Insufficient funds. Required: ${ethers.formatEther(totalValue)} S`);
 
             const rouletteContract = new ethers.Contract(rouletteAddress, rouletteAbi, gameWallet);
-
             const tx = await rouletteContract.bet(chargedBullets, { value: totalValue });
             
             console.log("Game Wallet transaction sent! Hash:", tx.hash);
-
             setWaitForResult(true);
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {
-                setIsLoading(false);
-                setStarted(false);
-                setWaitForResult(false);
-                setPendingRequestId(null);
-                setErrorMsg('Result timeout. Please try again.');
+                setIsLoading(false); setStarted(false); setWaitForResult(false);
+                setPendingRequestId(null); setErrorMsg('Result timeout. Please try again.');
             }, 60000);
-
         } catch (e: any) {
-            console.error("Game Wallet transaction error:", e);
+            const decodedMessage = decodeContractError(e, rouletteAbi);
+            setErrorMsg(decodedMessage);
             setIsLoading(false);
             setStarted(false);
-            setErrorMsg(e.reason || e.message || "Game Wallet transaction failed.");
         }
     }
 
     async function handleStart() {
         if (useGameWallet) {
-            await handleGameWalletBet();
+            if (gamesToPlay > 1) {
+                await startMultiBetSession();
+            } else {
+                await handleGameWalletBet();
+            }
         } else {
             if (!bet || Number(bet) < 1 || started || isLoading || vrfFee == null) return;
             setStarted(true);
@@ -145,54 +212,26 @@ export default function RussianRoulette() {
             setIsWin(null);
             setPendingRequestId(null);
             setErrorMsg(null);
+            
             try {
                 const betValue = BigInt(Math.floor(Number(bet) * 1e18));
                 const totalValue = betValue + vrfFee;
                 const simulation = await simulateContract(config, {
-                    abi: rouletteAbi,
-                    address: rouletteAddress,
-                    functionName: 'bet',
-                    args: [chargedBullets],
-                    value: totalValue,
-                    account: account.address,
+                    abi: rouletteAbi, address: rouletteAddress, functionName: 'bet',
+                    args: [chargedBullets], value: totalValue, account: account.address,
                 });
                 if (!simulation || !simulation.request) throw new Error('Simulation failed');
                 await writeContract(config, { ...simulation.request, value: totalValue });
                 setWaitForResult(true);
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 timeoutRef.current = setTimeout(() => {
-                    setIsLoading(false);
-                    setStarted(false);
-                    setWaitForResult(false);
-                    setPendingRequestId(null);
-                    setErrorMsg('Result timeout. Please try again.');
+                    setIsLoading(false); setStarted(false); setWaitForResult(false);
+                    setPendingRequestId(null); setErrorMsg('Result timeout. Please try again.');
                 }, 60000);
             } catch (e: any) {
-                setIsLoading(false);
-                setStarted(false);
-                let msg = '';
-                if (e && typeof e === 'object') {
-                    if (e.message) {
-                        if (e.message.includes('User denied transaction signature')) {
-                            msg += 'Operation cancelled by user';
-                        } else {
-                            const match = e.message.match(/Error:\s*([A-Za-z0-9_]+)\(/);
-                            if (match && match[1]) {
-                                msg += match[1] + '\n';
-                            } else {
-                                const fallback = e.message.match(/Error\s+([^\s:]+)/);
-                                if (fallback && fallback[1]) {
-                                    msg += fallback[1] + '\n';
-                                } else {
-                                    msg += e.message + '\n';
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    msg = 'Transaction error or cancelled';
-                }
-                setErrorMsg(msg.trim());
+                setIsLoading(false); setStarted(false);
+                const decodedMessage = decodeContractError(e, rouletteAbi);
+                setErrorMsg(decodedMessage);
             }
         }
     }
@@ -258,16 +297,35 @@ export default function RussianRoulette() {
         setChargedBullets(newCharged);
         updateCoefficient(newCharged);
     }
+
+    const showResult = (spin: number, alive: boolean) => {
+        const finalAngle = spinAngle - (spinAngle % 360) + 360 * 3 + (spin / TOTAL_CHAMBERS) * 360;
+        setSpinAngle(finalAngle);
+        setSpinResult(spin);
+
+        setTimeout(() => {
+            setIsWin(alive);
+            setIsLoading(false);
+            setStarted(false);
+            setWaitForResult(false);
+            setPendingRequestId(null);
+            setErrorMsg(null);
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        }, 4000);
+    };
     
     useWatchContractEvent({
         address: rouletteAddress,
         abi: rouletteAbi,
         eventName: 'BetPlaced',
         onLogs(logs) {
-            if (!waitForResult || !account.address) return;
+            if (!waitForResult || (!account.address && !useGameWallet)) return;
             for (const log of logs) {
                 const player = (log as any).args?.[1];
-                if (typeof player === 'string' && player.toLowerCase() !== account.address?.toLowerCase()) continue;
+                const playerAddress = useGameWallet ? new ethers.Wallet(sessionStorage.getItem('gameWalletSessionKey')!).address : account.address;
+                
+                if (typeof player === 'string' && player.toLowerCase() !== playerAddress?.toLowerCase()) continue;
+                
                 const requestId = log.topics?.[1];
                 pendingRequestIdRef.current = requestId ? String(requestId) : null;
                 setPendingRequestId(pendingRequestIdRef.current);
@@ -285,6 +343,7 @@ export default function RussianRoulette() {
             for (const log of logs) {
                 const requestId = log.topics?.[1];
                 const args = (log as any).args;
+                
                 if (args && args.player && args.spin !== undefined && args.alive !== undefined) {
                     setLiveFeed(prev => {
                         const amount = args.amount ? (Number(args.amount) / 1e18) : 0;
@@ -292,14 +351,9 @@ export default function RussianRoulette() {
                         let x = amount > 0 ? payout / amount : 0;
                         x = x && isFinite(x) ? x : 0;
                         const newItem = {
-                            player: args.player,
-                            alive: !!args.alive,
-                            spin: Number(args.spin),
-                            payout: payout.toFixed(3),
-                            amount: amount.toFixed(3),
-                            x: x.toFixed(2),
-                            time: Date.now(),
-                            txHash: log.transactionHash || undefined,
+                            player: args.player, alive: !!args.alive, spin: Number(args.spin),
+                            payout: payout.toFixed(3), amount: amount.toFixed(3), x: x.toFixed(2),
+                            time: Date.now(), txHash: log.transactionHash || undefined,
                             requestId: log.topics?.[1],
                         };
                         if (prev.some(item => (item.requestId && item.requestId === newItem.requestId) || (item.txHash && item.txHash === newItem.txHash))) {
@@ -308,18 +362,11 @@ export default function RussianRoulette() {
                         return [newItem, ...prev].slice(0, 30);
                     });
                 }
+                
                 if (!args) continue;
+
                 if (requestId === lastPendingId && lastPendingId) {
-                    const alive = args.alive;
-                    const spin = args.spin;
-                    setSpinResult(Number(spin));
-                    setIsWin(!!alive);
-                    setIsLoading(false);
-                    setStarted(false);
-                    setWaitForResult(false);
-                    setPendingRequestId(null);
-                    setErrorMsg(null);
-                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                    showResult(Number(args.spin), !!args.alive);
                 } else {
                     if (!lastPendingId && requestId) {
                         lastBetResultRef.current = { log, args };
@@ -334,16 +381,7 @@ export default function RussianRoulette() {
             const { log, args } = lastBetResultRef.current;
             const requestId = log.topics?.[1];
             if (requestId === pendingRequestId) {
-                const alive = args.alive;
-                const spin = args.spin;
-                setSpinResult(Number(spin));
-                setIsWin(!!alive);
-                setIsLoading(false);
-                setStarted(false);
-                setWaitForResult(false);
-                setPendingRequestId(null);
-                setErrorMsg(null);
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                showResult(Number(args.spin), !!args.alive);
                 lastBetResultRef.current = null;
             }
         }
@@ -351,7 +389,6 @@ export default function RussianRoulette() {
  
     return (
         <div className="min-h-screen bg-gradient-to-b from-red-950 to-black flex flex-col items-center justify-start pt-4">
-            {/* Live Feed */}
             <div className="w-full mb-8">
                 <div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg w-full">
                     <h2 className="text-lg font-bold text-red-200 mb-2 text-center">Live</h2>
@@ -360,29 +397,25 @@ export default function RussianRoulette() {
                             <div className="text-gray-400 text-sm italic text-center">No new games</div>
                         ) : (
                             <div className="flex flex-row gap-3 justify-start items-center py-0 px-1 w-full" style={{ width: '100%', minWidth: 0, overflowX: 'hidden' }}>
-                                {(() => {
-                                    const box = 60;
-                                    return liveFeed.map((item, idx) => {
-                                        const color = item.alive ? 'bg-green-700 border-green-400' : 'bg-red-800 border-red-400';
-                                        const xLabel = item.x && Number(item.x) > 0 ? `x${item.x}` : 'x0';
-                                        const tooltip = `Player: ${item.player}\nSpin: ${item.spin + 1}\n${item.alive ? 'WIN' : 'LOSE'}\nAmount: ${item.amount}\nPayout: ${item.payout}\nX: ${item.x}\n${new Date(item.time).toLocaleTimeString()}`;
-                                        const link = item.txHash ? `https://testnet.sonicscan.org/tx/${item.txHash}` : `https://testnet.sonicscan.org/address/${item.player}`;
-                                        return (
-                                            <a key={idx} href={link} target="_blank" rel="noopener noreferrer" title={tooltip} className={`flex-shrink-0 flex flex-col items-center justify-center rounded-lg border-2 shadow transition hover:scale-105 cursor-pointer ${color}`} style={{ scrollSnapAlign: 'start', flexBasis: `${box}px`, width: `${box}px`, height: `${box}px`, minWidth: `${box}px`, minHeight: `${box}px`, maxWidth: `${box}px`, maxHeight: `${box}px` }}>
-                                                <span className="font-bold text-lg select-none">{xLabel}</span>
-                                                <span className="text-xs font-mono select-none">{item.alive ? 'WIN' : 'LOSE'}</span>
-                                            </a>
-                                        );
-                                    });
-                                })()}
+                                {liveFeed.map((item, idx) => {
+                                    const color = item.alive ? 'bg-green-700 border-green-400' : 'bg-red-800 border-red-400';
+                                    const xLabel = item.x && Number(item.x) > 0 ? `x${item.x}` : 'x0';
+                                    const tooltip = `Player: ${item.player}\nSpin: ${item.spin + 1}\n${item.alive ? 'WIN' : 'LOSE'}\nAmount: ${item.amount}\nPayout: ${item.payout}\nX: ${item.x}\n${new Date(item.time).toLocaleTimeString()}`;
+                                    const link = item.txHash ? `https://testnet.sonicscan.org/tx/${item.txHash}` : `https://testnet.sonicscan.org/address/${item.player}`;
+                                    return (
+                                        <a key={idx} href={link} target="_blank" rel="noopener noreferrer" title={tooltip} className={`flex-shrink-0 flex flex-col items-center justify-center rounded-lg border-2 shadow transition hover:scale-105 cursor-pointer ${color}`} style={{ flexBasis: '60px', width: '60px', height: '60px' }}>
+                                            <span className="font-bold text-lg select-none">{xLabel}</span>
+                                            <span className="text-xs font-mono select-none">{item.alive ? 'WIN' : 'LOSE'}</span>
+                                        </a>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
                 </div>
             </div>
             <div className="flex flex-col md:flex-row gap-5 w-full justify-center items-stretch">
-                {/* Stats */}
-                <div className="flex flex-col gap-4 max-w-xs w-full mb-5 md:mb-0 h-[340px]">
+                <div className="flex flex-col gap-4 max-w-xs w-full mb-5 md:mb-0">
                     <div className="bg-black/60 border-2 border-red-800 rounded-xl p-6 flex flex-col justify-between shadow-lg">
                         <h2 className="text-lg font-bold text-red-200 mb-2 text-center">My Statistics</h2>
                         <div className="text-gray-300 mb-1 flex justify-between"><span>Games Played:</span> <span className="font-mono">{playerStats.totalGamesPlayed}</span></div>
@@ -391,7 +424,7 @@ export default function RussianRoulette() {
                         <div className="text-gray-300 mb-1 flex justify-between"><span>Amount Won:</span> <span className="font-mono">{playerStats.totalPayout}</span></div>
                         <div className="text-gray-300 mb-1 flex justify-between"><span>ROI:</span> <span className="font-mono">{Number(playerStats.totalBetsAmount) > 0 ? ((Number(playerStats.totalPayout) / Number(playerStats.totalBetsAmount)) * 100).toFixed(1) : 0}%</span></div>
                     </div>
-                    <div className="bg-black/60 border-2 border-yellow-800 rounded-xl p-6 flex flex-col justify-up shadow-lg">
+                    <div className="bg-black/60 border-2 border-yellow-800 rounded-xl p-6 flex flex-col shadow-lg">
                         <h2 className="text-lg font-bold text-yellow-200 mb-2 text-center">Global Statistics</h2>
                         <div className="text-gray-300 mb-1 flex justify-between"><span>Games Played:</span> <span className="font-mono">{globalStats.totalGamesPlayed}</span></div>
                         <div className="text-gray-300 mb-1 flex justify-between"><span>Games Won:</span> <span className="font-mono">{globalStats.totalGamesWon}</span></div>
@@ -401,18 +434,20 @@ export default function RussianRoulette() {
                         <div className="text-gray-300 mb-1 flex justify-between"><span>ROI:</span> <span className="font-mono">{Number(globalStats.totalBets) > 0 ? ((Number(globalStats.totalPayout) / Number(globalStats.totalBets)) * 100).toFixed(1) : 0}%</span></div>
                     </div>
                 </div>
-                {/* Game Window */}
                 <div className="bg-black/60 border-1 border-red-700 rounded-xl p-8 w-full max-w-md shadow-lg flex flex-col justify-start">
                     <h1 className="text-4xl font-bold text-red-100 mb-8 text-center" style={{ textShadow: '2px 2px 4px rgba(220, 38, 38, 0.8)' }}>Roulette</h1>
-                    {/* Drum */}
                     <div className="flex flex-col items-center mb-6">
-                        <div className="relative w-150 h-90 flex items-center justify-center mb-4" style={{marginTop: '16px'}}>
+                        <div className="relative w-150 h-90 flex items-center justify-center mb-4" style={{marginTop: '16px'}}> {/* Возвращаем оригинальные размеры */}
                             <div style={{position: 'relative', width: 400, height: 400}}>
                                 <svg width="400" height="40" style={{position: 'absolute', left: 0, top: -16, zIndex: 2, pointerEvents: 'none'}}>
                                     <defs><linearGradient id="pointer-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#e11d48" /><stop offset="100%" stopColor="#111" /></linearGradient></defs>
                                     <polygon points="180,8 220,8 200,38" fill="url(#pointer-gradient)" stroke="#7f1d1d" strokeWidth="4" />
                                 </svg>
-                                <svg width="400" height="400" viewBox="0 0 160 160" style={{ transition: 'transform 2.5s cubic-bezier(.4,2,.3,1)', transform: spinResult !== null ? `rotate(${(spinResult / TOTAL_CHAMBERS) * 360}deg)` : 'none', position: 'absolute', left: 0, top: 0, zIndex: 1 }}>
+                                <svg width="400" height="400" viewBox="0 0 160 160" style={{ 
+                                    transition: 'transform 4s cubic-bezier(0.65, 0, 0.35, 1)', 
+                                    transform: `rotate(${spinAngle}deg)`, 
+                                    position: 'absolute', left: 0, top: 0, zIndex: 1 
+                                }}>
                                     <circle cx="80" cy="80" r="75" fill="#222" stroke="#444" strokeWidth="6" />
                                     {[...Array(TOTAL_CHAMBERS)].map((_, i) => {
                                         const angle = (i / TOTAL_CHAMBERS) * 2 * Math.PI;
@@ -424,20 +459,20 @@ export default function RussianRoulette() {
                                 </svg>
                             </div>
                         </div>
-                        {/* Ammo selector */}
                         <div className="flex items-center gap-4 mb-2">
                             <button className="p-2 rounded-full bg-gradient-to-r from-red-900 to-black hover:bg-gray-700 border border-gray-600 text-gray-200" onClick={() => handleChargedChange(-1)} disabled={chargedBullets === MIN_CHARGED || started}><FiArrowLeft size={24} /></button>
                             <div className="flex gap-1">
-                                {[...Array(MAX_CHARGED)].map((_, i) => (<div key={i} className={`w-6 h-6 rounded-full border-2 ${i < chargedBullets ? "bg-red-700 border-red-400" : "bg-gray-700 border-gray-500"}`} />))}
+                                {[...Array(TOTAL_CHAMBERS)].map((_, i) => ( // Изменил MAX_CHARGED на MAX_CHAMBERS для отображения всех патронов
+                                    <div key={i} className={`w-6 h-6 rounded-full border-2 ${i < chargedBullets ? "bg-red-700 border-red-400" : "bg-gray-700 border-gray-500"}`} />
+                                ))}
                             </div>
-                            <button className="p-2 rounded-full bg-gradient-to-r from-black-900 to-red-900 hover:bg-gray-700 border border-gray-600 text-gray-200" onClick={() => handleChargedChange(1)} disabled={chargedBullets === MAX_CHARGED || started}><FiArrowRight size={24} /></button>
+                            <button className="p-2 rounded-full bg-gradient-to-r from-black to-red-900 hover:bg-gray-700 border border-gray-600 text-gray-200" onClick={() => handleChargedChange(1)} disabled={chargedBullets === MAX_CHARGED || started}><FiArrowRight size={24} /></button>
                         </div>
                         <div className="text-gray-400 text-sm mb-2">Loaded ammos: <span className="text-gray-100 font-bold">{chargedBullets}</span> of <span className="text-gray-100 font-bold">{TOTAL_CHAMBERS}</span></div>
                     </div>
                 </div>
-                {/* Bet controls */}
-                <div className="w-full max-w-xs md:ml-0 md:mt-0 mt-0 flex flex-col justify-start h-[340px]"> 
-                    <div className="bg-black/70 border-2 border-red-800 rounded-xl p-3 shadow-lg flex flex-col gap-2 mb-4 justify-between" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
+                <div className="w-full max-w-xs md:ml-0 md:mt-0 flex flex-col justify-start"> 
+                    <div className="bg-black/70 border-2 border-red-800 rounded-xl p-3 shadow-lg flex flex-col gap-2 mb-4 justify-between">
                         <div className="text-gray-300 text-base mb-0.5">Chance to win: <span className="font-bold text-green-400">{winChance}%</span></div>
                         <div className="text-gray-300 text-base">Coefficient: <span className="font-bold text-red-400">x{coefficient}</span></div>
                         {bet && Number(bet) > 0 && (<div className="text-gray-300 text-base mt-0.5">Possible winnings: <span className="font-bold text-green-400">{((Number(bet) * TOTAL_CHAMBERS) / (TOTAL_CHAMBERS - chargedBullets) * 0.95).toFixed(2)}</span></div>)}
@@ -453,30 +488,62 @@ export default function RussianRoulette() {
                                     </div>
                                 </div>
                             </div>
+                            
+                            {useGameWallet && (
+                                <div className="mt-2 text-gray-300 px-4">
+                                    <label htmlFor="gamesToPlay" className="block text-sm font-bold mb-1">Number of Games: <span className="text-red-400 font-mono text-base">{gamesToPlay}x</span></label>
+                                    <Slider
+                                        min={1}
+                                        max={10}
+                                        step={1}
+                                        value={gamesToPlay}
+                                        onChange={(value) => setGamesToPlay(value as number)}
+                                        disabled={started}
+                                        handleStyle={{
+                                            borderColor: '#fecaca', // Светло-красный
+                                            backgroundColor: '#dc2626', // Красный
+                                            height: 24,
+                                            width: 24,
+                                            marginTop: -10, // Центрирование
+                                            opacity: 1,
+                                            boxShadow: '0 0 5px rgba(254, 202, 202, 0.5)' // Тень
+                                        }}
+                                        trackStyle={{ backgroundColor: '#dc2626', height: 6 }} // Красная полоса заполнения
+                                        railStyle={{ backgroundColor: '#374151', height: 6 }} // Темная полоса фона
+                                    />
+                                </div>
+                            )}
+
                             <button className="w-full px-4 py-2 bg-gradient-to-r from-red-900 to-black border border-red-700 text-red-200 rounded-lg hover:bg-gradient-to-r hover:from-red-800 hover:to-black transition-all font-bold tracking-tight text-base mb-1 disabled:opacity-60" onClick={handleStart} disabled={started || isLoading || !bet || Number(bet) < 1}>
-                                {isLoading ? 'Spinning...' : 'Start'}
+                                {isLoading ? (isMultiBetting ? `Running... (${multiBetProgress.current}/${multiBetProgress.total})` : 'Spinning...') : 'Start'}
                             </button>
+                            
+                            {isMultiBetting && (
+                                <div className="mt-2 px-4 py-2 bg-blue-900/80 border border-blue-600 text-blue-200 rounded-lg text-xs font-mono">
+                                    {`Played: ${multiBetProgress.current}/${multiBetProgress.total}`}
+                                </div>
+                            )}
+
                             {pendingRequestId && isWin === null && (<div className="mt-2 px-4 py-2 bg-blue-900/80 border border-blue-600 text-blue-200 rounded-lg text-xs font-mono">pendingRequestId: {pendingRequestId}</div>)}
                             <ModalWinLose isWin={isWin} onClose={() => setIsWin(null)} />
                             {errorMsg && (<div className="mt-2 px-4 py-2 bg-yellow-900/80 border border-yellow-600 text-yellow-200 rounded-lg text-base font-bold animate-pulse">{errorMsg}</div>)}
                         </div>
                     </div>
-                {/* Referral system UI */}
-                <div className="w-half max-w-4xl mb-8">
-                    <div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
-                        <h3 className="text-yellow-300 text-lg font-bold mb-1 text-center">Referral System</h3>
-                        <div className="flex flex-col md:flex-row gap-2 items-center justify-center">
-                            <input type="text" maxLength={32} className="text-center bg-black/80 border border-gray-700 text-gray-100 rounded-lg py-1 text-base font-mono focus:outline-none" style={{ width: '520px', paddingLeft: 0, paddingRight: 0, fontFamily: 'monospace' }} placeholder="Enter referral code" disabled={started} value={refInput} onChange={e => setRefInput(e.target.value)} />
+                    <div className="w-half max-w-4xl mb-8">
+                        <div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col gap-2">
+                            <h3 className="text-yellow-300 text-lg font-bold mb-1 text-center">Referral System</h3>
+                            <div className="flex flex-col md:flex-row gap-2 items-center justify-center">
+                                <input type="text" maxLength={32} className="text-center bg-black/80 border border-gray-700 text-gray-100 rounded-lg py-1 text-base font-mono focus:outline-none" style={{ width: '520px', paddingLeft: 0, paddingRight: 0, fontFamily: 'monospace' }} placeholder="Enter referral code" disabled={started} value={refInput} onChange={e => setRefInput(e.target.value)} />
+                            </div>
+                            <button className="px-4 py-1.5 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 disabled:opacity-60" disabled={started || refLoading} onClick={async () => { setRefError(null); setRefLoading(true); const bytes32 = toBytes32(refInput); try { await writeContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'applyReferralCode', args: [bytes32], account: account.address }); } catch (e: any) { setRefError(e?.message || 'Error applying referral code'); } setRefLoading(false); }}>{refLoading ? 'Applying...' : 'Apply'}</button>
+                            <button className="px-4 py-1.5 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 disabled:opacity-60" disabled={started || refLoading} onClick={async () => { setRefError(null); setRefLoading(true); const bytes32 = toBytes32(refInput); try { await writeContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'createReferralCode', args: [bytes32], account: account.address }); } catch (e: any) { setRefError(e?.message || 'Error creating referral code'); } setRefLoading(false); }}>{refLoading ? 'Creating...' : 'Create'}</button>
+                            {refError && (<div className="text-xs text-red-400 font-mono mt-1">{refError}</div>)}
+                            <div className="text-gray-300 text-sm mt-0">Your referrer: <span className="font-mono text-yellow-200">---</span></div>
+                            <div className="text-gray-300 text-sm mt-0">Referrals: <span className="font-mono text-yellow-200">{playerStats.totalReferrals}</span></div>
                         </div>
-                        <button className="px-4 py-1.5 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 disabled:opacity-60" disabled={started || refLoading} onClick={async () => { setRefError(null); setRefLoading(true); const bytes32 = toBytes32(refInput); setRefBytes32(bytes32); try { await writeContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'applyReferralCode', args: [bytes32], account: account.address }); } catch (e: any) { setRefError(e?.message || 'Error applying referral code'); } setRefLoading(false); }}>{refLoading ? 'Applying...' : 'Apply'}</button>
-                        <button className="px-4 py-1.5 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 disabled:opacity-60" disabled={started || refLoading} onClick={async () => { setRefError(null); setRefLoading(true); const bytes32 = toBytes32(refInput); setRefBytes32(bytes32); try { await writeContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'createReferralCode', args: [bytes32], account: account.address }); } catch (e: any) { setRefError(e?.message || 'Error creating referral code'); } setRefLoading(false); }}>{refLoading ? 'Creating...' : 'Create'}</button>
-                        {refError && (<div className="text-xs text-red-400 font-mono mt-1">{refError}</div>)}
-                        <div className="text-gray-300 text-sm mt-0">Your referrer: <span className="font-mono text-yellow-200">---</span></div>
-                        <div className="text-gray-300 text-sm mt-0">Referrals: <span className="font-mono text-yellow-200">{playerStats.totalReferrals}</span></div>
                     </div>
                 </div>
             </div>
-        </div>
         </div>
     );
 }

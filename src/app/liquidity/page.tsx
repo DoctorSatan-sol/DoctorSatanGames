@@ -58,7 +58,7 @@ export default function Liquidity() {
   const apyValue = daysSinceLaunch > 0 ? (((tvlValue - totalSupply) / totalSupply) / daysSinceLaunch) * 365 * 100 : 0;
 
   const poolStats = {
-    apy: apyValue > 0 ? apyValue.toFixed(2) : 0,
+    apy: apyValue.toFixed(2),
     tvl: Math.round(poolBalance$),
     yourStake: userBalance ? (parseFloat(userBalance.toString()) / 1e18).toFixed(1) : 0,
   };
