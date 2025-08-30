@@ -1,8 +1,37 @@
+
 "use client";
+import React from "react";
+import { useChainId, useConfig, useReadContract } from "wagmi";
+import { chains, pocAbi } from "@/constants";
 import "../roulette/hide-scrollbar.css";
 
 export default function ProofOfClickUI() {
-	// Только оформление, без логики и хуков
+ // ...existing code...
+ const [showDetails, setShowDetails] = React.useState(false);
+ const chainId = useChainId();
+ const config = useConfig();
+ const pocAddress = chains[chainId]?.poc as `0x${string}`;
+ const { data: totalSupply } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "totalSupply", query: { enabled: !!pocAddress } });
+ const { data: maxSupply } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "maxSupply", query: { enabled: !!pocAddress } });
+ // Для Burn Supply, Price, TVL C, TVL $ — если нет прямых методов, оставить "..." или добавить позже
+
+	 // Основные значения
+	 const { data: currentReward } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "currentReward", query: { enabled: !!pocAddress } });
+	 const { data: roundId } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "roundId", query: { enabled: !!pocAddress } });
+	 const { data: playersInRound } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "playerCount", args: [roundId ?? 0], query: { enabled: !!pocAddress && roundId !== undefined } });
+
+	 // Детальные значения для раскрывающегося меню
+	 const { data: tokenName } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "name", query: { enabled: !!pocAddress } });
+	 const { data: symbol } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "symbol", query: { enabled: !!pocAddress } });
+	 const { data: initialReward } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "INITIAL_REWARD", query: { enabled: !!pocAddress } });
+	 const { data: fee } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "FEE", query: { enabled: !!pocAddress } });
+	 const { data: halvingInterval } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "HALVING_INTERVAL_ROUNDS", query: { enabled: !!pocAddress } });
+	 const { data: lastHalvingRound } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "lastHalvingRound", query: { enabled: !!pocAddress } });
+	 const { data: nextHalvingRound } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "nextHalvingRound", query: { enabled: !!pocAddress } });
+	 const { data: roundDuration } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "ROUND_DURATION", query: { enabled: !!pocAddress } });
+	 const { data: lastRoundTs } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "lastRoundTs", query: { enabled: !!pocAddress } });
+	 const { data: liquidityShare } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "LIQUIDITY_SHARE", query: { enabled: !!pocAddress } });
+	 const { data: liquidityVault } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "liquidityVault", query: { enabled: !!pocAddress } });
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-red-950 to-black flex flex-col items-center justify-start pt-4">
 			<div className="flex flex-col md:flex-row gap-5 w-full justify-center items-stretch">
@@ -54,36 +83,36 @@ export default function ProofOfClickUI() {
 				<div className="flex flex-col gap-4 basis-full md:basis-1/5 max-w-full md:max-w-[20%] mb-5 md:mb-0 h-[340px] order-2">
 					<div className="bg-black/60 border-2 border-red-800 rounded-xl p-6 flex flex-col justify-between shadow-lg gap-0.5">
 						<h2 className="text-lg font-bold text-red-200 mb-0 text-center">My Statistics</h2>
-						<div className="text-gray-300 mb-1 flex justify-between"><span>Blocks Won:</span> <span className="font-mono">0</span></div>
 						<div className="text-gray-300 mb-1 flex justify-between"><span>Clicks:</span> <span className="font-mono">0</span></div>
-						<div className="text-gray-300 mb-1 flex justify-between"><span>Balance:</span> <span className="font-mono text-green-400">666C</span></div>
+						<div className="text-gray-300 mb-1 flex justify-between"><span>Blocks Won:</span> <span className="font-mono">0</span></div>
+						<div className="text-gray-300 mb-1 flex justify-between text-green-400"><span>Balance:</span> <span className="font-mono text-green-400">666C</span></div>
 					</div>
 					<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col justify-up shadow-lg">
 						<h2 className="text-lg font-bold text-yellow-200 mb-4 text-center">Info</h2>
 						<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Total Supply:</span>
-									<span className="font-bold">123,456</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Max Supply:</span>
-									<span className="font-bold">1,000,000</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Burn Supply:</span>
-									<span className="font-bold">1,000,000</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Price:</span>
-									<span className="font-bold">1,000,000</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>TVL C:</span>
-									<span className="font-bold">1,000,000</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>TVL $:</span>
-									<span className="font-bold">1,000,000</span>
-								</div>
+							<span>Total Supply:</span>
+							<span className="font-bold">{totalSupply ? Number(totalSupply) / 1e18 : '...'}</span>
+						</div>
+						<div className="flex justify-between text-base text-yellow-200 font-mono">
+							<span>Max Supply:</span>
+							<span className="font-bold">{maxSupply ? Number(maxSupply) / 1e18 : '...'}</span>
+						</div>
+						<div className="flex justify-between text-base text-yellow-200 font-mono">
+							<span>Burn Supply:</span>
+							<span className="font-bold">...</span>
+						</div>
+						<div className="flex justify-between text-base text-yellow-200 font-mono">
+							<span>Price:</span>
+							<span className="font-bold">...</span>
+						</div>
+						<div className="flex justify-between text-base text-yellow-200 font-mono">
+							<span>TVL C:</span>
+							<span className="font-bold">...</span>
+						</div>
+						<div className="flex justify-between text-base text-yellow-200 font-mono">
+							<span>TVL $:</span>
+							<span className="font-bold">...</span>
+						</div>
 					</div>
 					<div className="w-half max-w-4xl mb-8">
 						<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
@@ -113,24 +142,33 @@ export default function ProofOfClickUI() {
 						</button>
 						<div className="text-gray-400 text-sm mt-4">Click the button to play</div>
 						{/* Информация о наградах и блоках */}
+						{/* Краткая инфа + раскрывающееся меню */}
+						{/* eslint-disable-next-line react-hooks/rules-of-hooks */}
 						<div className="mt-8 w-full flex flex-col items-center">
-							<div className="bg-black/70 border-2 border-yellow-700 rounded-xl px-6 py-4 shadow-lg flex flex-col gap-2 w-full max-w-md">
-							<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Clicks:</span>
-									<span className="font-bold">1,234</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Current Reward:</span>
-									<span className="font-bold">0.05</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Current Block:</span>
-									<span className="font-bold">8,888</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Miners in Block:</span>
-									<span className="font-bold">8,888</span>
-								</div>
+							<div
+								className="bg-black/70 border-2 border-yellow-700 rounded-xl px-6 py-4 shadow-lg flex flex-col gap-2 w-full max-w-md cursor-pointer select-none"
+								onClick={() => setShowDetails((v) => !v)}
+							>
+								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Current Reward:</span><span className="font-bold">{currentReward ? Number(currentReward) / 1e18 : '...'}</span></div>
+								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Current Block (Round):</span><span className="font-bold">{roundId?.toString() ?? '...'}</span></div>
+								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Players in Round:</span><span className="font-bold">{playersInRound?.toString() ?? '...'}</span></div>
+								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Clicks in round:</span><span className="font-bold">12</span></div>
+								<div className="text-xs text-yellow-300 text-center mt-2">{showDetails ? "Скрыть детали ▲" : "Показать детали ▼"}</div>
+												{showDetails && (
+													<div className="mt-3 flex flex-col gap-2 animate-fade-in">
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Token Name:</span><span className="font-bold">{typeof tokenName === 'string' ? tokenName : '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Symbol:</span><span className="font-bold">{typeof symbol === 'string' ? symbol : '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Initial Reward:</span><span className="font-bold">{initialReward ? Number(initialReward) / 1e18 : '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Fee:</span><span className="font-bold">{fee ? Number(fee) / 1e18 : '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Halving Interval:</span><span className="font-bold">{halvingInterval?.toString() ?? '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Last Halving Round:</span><span className="font-bold">{lastHalvingRound?.toString() ?? '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Next Halving Round:</span><span className="font-bold">{nextHalvingRound?.toString() ?? '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Round Duration:</span><span className="font-bold">{roundDuration?.toString() ?? '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Last Round Timestamp:</span><span className="font-bold">{lastRoundTs?.toString() ?? '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Liquidity Share:</span><span className="font-bold">{liquidityShare?.toString() ?? '...'}</span></div>
+														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Liquidity Vault:</span><span className="font-bold">{typeof liquidityVault === 'string' ? liquidityVault : liquidityVault?.toString() ?? '...'}</span></div>
+													</div>
+												)}
 							</div>
 						</div>
 					</div>
