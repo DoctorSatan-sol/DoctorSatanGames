@@ -494,7 +494,7 @@ export default function RussianRoulette() {
                                     <label htmlFor="gamesToPlay" className="block text-sm font-bold mb-1">Number of Games: <span className="text-red-400 font-mono text-base">{gamesToPlay}x</span></label>
                                     <Slider
                                         min={1}
-                                        max={10}
+                                        max={100}
                                         step={1}
                                         value={gamesToPlay}
                                         onChange={(value) => setGamesToPlay(value as number)}
