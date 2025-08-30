@@ -35,19 +35,28 @@ export default function ProofOfClickUI() {
 				<div className="flex flex-col gap-4 basis-full md:basis-1/5 max-w-full md:max-w-[20%] mb-5 md:mb-0 h-[340px] order-2">
 					<div className="bg-black/60 border-2 border-red-800 rounded-xl p-6 flex flex-col justify-between shadow-lg gap-0.5">
 						<h2 className="text-lg font-bold text-red-200 mb-0 text-center">My Statistics</h2>
-						<div className="text-gray-300 mb-1 flex justify-between"><span>Blocks Entry:</span> <span className="font-mono">0</span></div>
 						<div className="text-gray-300 mb-1 flex justify-between"><span>Blocks Won:</span> <span className="font-mono">0</span></div>
 						<div className="text-gray-300 mb-1 flex justify-between"><span>Clicks:</span> <span className="font-mono">0</span></div>
-						<div className="text-gray-300 mb-1 flex justify-between"><span>ROI:</span> <span className="font-mono">0</span></div>
-						<div className="text-gray-300 mb-1 flex justify-between"><span>Balance:</span> <span className="font-mono text-green-400">666S</span></div>
+						<div className="text-gray-300 mb-1 flex justify-between"><span>Balance:</span> <span className="font-mono text-green-400">666C</span></div>
 					</div>
 					<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col justify-up shadow-lg">
 						<h2 className="text-lg font-bold text-yellow-200 mb-4 text-center">Leaderboard</h2>
-						<div className="text-gray-300 mb-2 flex justify-between"><span>1. Player1:</span> <span className="font-mono">100</span></div>
-						<div className="text-gray-300 mb-2 flex justify-between"><span>2. Player2:</span> <span className="font-mono">90</span></div>
-						<div className="text-gray-300 mb-2 flex justify-between"><span>3. Player3:</span> <span className="font-mono">80</span></div>
-						<div className="text-gray-300 mb-2 flex justify-between"><span>4. Player4:</span> <span className="font-mono">70</span></div>
-						<div className="text-gray-300 mb-2 flex justify-between"><span>5. Player5:</span> <span className="font-mono">60</span></div>
+						<div className="flex justify-between text-base text-yellow-200 font-mono">
+									<span>Total Supply:</span>
+									<span className="font-bold">123,456</span>
+								</div>
+								<div className="flex justify-between text-base text-yellow-200 font-mono">
+									<span>Max Supply:</span>
+									<span className="font-bold">1,000,000</span>
+								</div>
+								<div className="flex justify-between text-base text-yellow-200 font-mono">
+									<span>Burn Supply:</span>
+									<span className="font-bold">1,000,000</span>
+								</div>
+								<div className="flex justify-between text-base text-yellow-200 font-mono">
+									<span>Price:</span>
+									<span className="font-bold">1,000,000</span>
+								</div>
 					</div>
 				</div>
 				{/* Proof Of Click — 2/5 экрана */}
@@ -71,20 +80,12 @@ export default function ProofOfClickUI() {
 									<span className="font-bold">1,234</span>
 								</div>
 								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Block Reward:</span>
+									<span>Current Reward:</span>
 									<span className="font-bold">0.05</span>
 								</div>
 								<div className="flex justify-between text-base text-yellow-200 font-mono">
 									<span>Current Block:</span>
 									<span className="font-bold">8,888</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Total Supply:</span>
-									<span className="font-bold">123,456</span>
-								</div>
-								<div className="flex justify-between text-base text-yellow-200 font-mono">
-									<span>Max Supply:</span>
-									<span className="font-bold">1,000,000</span>
 								</div>
 							</div>
 						</div>
