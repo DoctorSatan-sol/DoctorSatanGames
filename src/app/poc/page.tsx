@@ -13,19 +13,38 @@ export default function ProofOfClickUI() {
 						<div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg w-full flex flex-col gap-2 items-center min-h-[700px]">
 							{/* Пример вертикальных элементов live-ленты */}
 							<div className="flex flex-col items-center gap-1 w-full">
-								<div className="flex-shrink-0 flex flex-col items-center justify-center rounded-lg border-2 shadow transition cursor-pointer bg-red-800 border-red-400 w-12 h-12 max-w-full">
-									<span className="font-bold text-lg select-none">x0</span>
-									<span className="text-xs font-mono select-none">LOSE</span>
+							<div className="flex flex-col items-center gap-3 w-full">
+								{/* Пример 3D прямоугольника live-ленты */}
+								<div className="w-full bg-gradient-to-br from-red-900 via-black to-red-800 border-2 border-red-400 rounded-xl shadow-2xl p-4 flex flex-col gap-2 transform hover:scale-105 transition-all duration-150" style={{boxShadow:'0 6px 24px 0 #7f1d1d99, 0 1.5px 0 #fff4 inset'}}>
+									<div className="flex justify-between items-center text-yellow-200 font-mono text-sm">
+										<span>Block #8888</span>
+										<span>Miners: <span className="font-bold">12</span></span>
+									</div>
+									<div className="flex justify-between items-center text-white font-mono text-xs">
+										<span>Winner:</span>
+										<span className="truncate max-w-[120px] text-green-300">0xA5H2...C377</span>
+									</div>
+									<div className="flex justify-between items-center text-white font-mono text-xs">
+										<span>Win Chance:</span>
+										<span className="font-bold text-blue-300">22.8%</span>
+									</div>
 								</div>
-								<div className="flex-shrink-0 flex flex-col items-center justify-center rounded-lg border-2 shadow transition cursor-pointer bg-green-700 border-green-400 w-12 h-12 max-w-full">
-									<span className="font-bold text-lg select-none">x2.1</span>
-									<span className="text-xs font-mono select-none">WIN</span>
-								</div>
-								<div className="flex-shrink-0 flex flex-col items-center justify-center rounded-lg border-2 shadow transition cursor-pointer bg-red-800 border-red-400 w-12 h-12 max-w-full">
-									<span className="font-bold text-lg select-none">x0</span>
-									<span className="text-xs font-mono select-none">LOSE</span>
+								<div className="w-full bg-gradient-to-br from-red-900 via-black to-red-800 border-2 border-red-400 rounded-xl shadow-2xl p-4 flex flex-col gap-2 transform hover:scale-105 transition-all duration-150" style={{boxShadow:'0 6px 24px 0 #7f1d1d99, 0 1.5px 0 #fff4 inset'}}>
+									<div className="flex justify-between items-center text-yellow-200 font-mono text-sm">
+										<span>Block #8887</span>
+										<span>Miners: <span className="font-bold">52</span></span>
+									</div>
+									<div className="flex justify-between items-center text-white font-mono text-xs">
+										<span>Winner:</span>
+										<span className="truncate max-w-[120px] text-green-300">0xA1b2...C3d4</span>
+									</div>
+									<div className="flex justify-between items-center text-white font-mono text-xs">
+										<span>Win Chance:</span>
+										<span className="font-bold text-blue-300">18.2%</span>
+									</div>
 								</div>
 								{/* ...ещё элементы... */}
+							</div>
 							</div>
 							<div className="text-gray-400 text-sm italic text-center mt-2">No new games</div>
 						</div>
