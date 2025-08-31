@@ -338,13 +338,17 @@ export default function RussianRoulette() {
 
     useEffect(() => {
         async function fetchPlayerStats() {
-            if (!account.address || !rouletteAddress) return;
+            // Use selected address depending on wallet toggle
+            const selectedAddress = useGameWallet
+                ? (() => { try { const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null; if (sessionKey) { return new ethers.Wallet(sessionKey).address; } } catch { return null; } return null; })()
+                : account.address;
+            if (!selectedAddress || !rouletteAddress) return;
             try {
                 const result = await readContract(config, {
                     abi: rouletteAbi,
                     address: rouletteAddress,
                     functionName: "playerInfo",
-                    args: [account.address],
+                    args: [selectedAddress],
                 });
                 if (Array.isArray(result) && result.length >= 5) {
                     setPlayerStats({
@@ -358,7 +362,7 @@ export default function RussianRoulette() {
             } catch (e) { /* ignore */ }
         }
         fetchPlayerStats();
-    }, [account.address, rouletteAddress, started, isWin, config]);
+    }, [useGameWallet, account.address, rouletteAddress, started, isWin, config]);
     
     function updateCoefficient(newCharged: number) {
         const winChancePercent = ((TOTAL_CHAMBERS - newCharged) / TOTAL_CHAMBERS) * 100;
