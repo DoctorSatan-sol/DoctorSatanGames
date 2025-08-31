@@ -37,9 +37,92 @@ function decodeContractError(error: any, abi: any[]): string {
 export default function RussianRoulette() {
     const { useGameWallet } = useGameWalletContext();
 
+    const chainId = useChainId();
+    const config = useConfig();
+    const account = useAccount();
+    const rouletteAddress = chains[chainId]?.roulette as `0x${string}`;
+    const rouletteAbi = sgSAbiV2;
+
     const [refLoading, setRefLoading] = useState(false);
     const [refError, setRefError] = useState<string | null>(null);
     const [refInput, setRefInput] = useState("");
+    const [yourReferrer, setYourReferrer] = useState<string | null>(null);
+    const [referralsCount, setReferralsCount] = useState<number | null>(null);
+    const [yourReferralCode, setYourReferralCode] = useState<string | null>(null);
+    // ...existing code...
+
+    async function fetchReferralInfo() {
+        const selectedAddress = useGameWallet
+            ? (() => { try { const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null; if (sessionKey) { return new ethers.Wallet(sessionKey).address; } } catch { return null; } return null; })()
+            : account.address;
+        if (!rouletteAddress || !selectedAddress) return;
+        try {
+            const ref = await readContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'referrerOf', args: [selectedAddress] });
+            const refStr = typeof ref === 'string' ? ref : '';
+            setYourReferrer(refStr && refStr !== '0x0000000000000000000000000000000000000000' ? refStr : null);
+            // Get totalReferrals from playerInfo struct
+            const playerInfo = await readContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'playerInfo', args: [selectedAddress] });
+            let totalReferrals = 0;
+            if (Array.isArray(playerInfo) && playerInfo.length >= 5) {
+                totalReferrals = Number(playerInfo[4]);
+            } else if (playerInfo && typeof playerInfo === 'object' && 'totalReferrals' in playerInfo) {
+                totalReferrals = Number((playerInfo as any).totalReferrals);
+            }
+            setReferralsCount(totalReferrals);
+            // Fetch your referral code
+            const code = await readContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'referralCodeOf', args: [selectedAddress] });
+            let codeStr = '';
+            if (typeof code === 'string' && code !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+                codeStr = Buffer.from(code.replace(/^0x/, ''), 'hex').toString('utf8').replace(/\u0000+$/, '').replace(/\0+$/, '');
+            }
+            setYourReferralCode(codeStr || null);
+        } catch {}
+    }
+
+    useEffect(() => { fetchReferralInfo(); }, [rouletteAddress, account.address, useGameWallet]);
+
+    // Game Wallet referral logic
+    async function handleApplyReferral() {
+        setRefError(null); setRefLoading(true);
+        const bytes32 = toBytes32(refInput);
+        try {
+            if (useGameWallet) {
+                const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
+                if (!sessionKey) throw new Error('Game Wallet is not unlocked');
+                const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+                const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+                const wallet = new ethers.Wallet(sessionKey, provider);
+                const contract = new ethers.Contract(rouletteAddress, rouletteAbi, wallet);
+                await contract.applyReferralCode(bytes32);
+            } else {
+                await writeContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'applyReferralCode', args: [bytes32], account: account.address });
+            }
+        } catch (e: any) {
+            setRefError(e?.message || 'Error applying referral code');
+        }
+        setRefLoading(false);
+    }
+
+    async function handleCreateReferral() {
+        setRefError(null); setRefLoading(true);
+        const bytes32 = toBytes32(refInput);
+        try {
+            if (useGameWallet) {
+                const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
+                if (!sessionKey) throw new Error('Game Wallet is not unlocked');
+                const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+                const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+                const wallet = new ethers.Wallet(sessionKey, provider);
+                const contract = new ethers.Contract(rouletteAddress, rouletteAbi, wallet);
+                await contract.createReferralCode(bytes32);
+            } else {
+                await writeContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'createReferralCode', args: [bytes32], account: account.address });
+            }
+        } catch (e: any) {
+            setRefError(e?.message || 'Error creating referral code');
+        }
+        setRefLoading(false);
+    }
     
     function toBytes32(str: string): string {
         const encoder = new TextEncoder();
@@ -74,11 +157,6 @@ export default function RussianRoulette() {
     const [isMultiBetting, setIsMultiBetting] = useState(false);
     const [multiBetProgress, setMultiBetProgress] = useState({ current: 0, total: 0 });
 
-    const chainId = useChainId();
-    const config = useConfig();
-    const account = useAccount();
-    const rouletteAddress = chains[chainId]?.roulette as `0x${string}`;
-    const rouletteAbi = sgSAbiV2;
     const { data: nativeBalance } = useBalance({ address: account.address });
 
     const [waitForResult, setWaitForResult] = useState(false);
@@ -535,11 +613,18 @@ export default function RussianRoulette() {
                             <div className="flex flex-col md:flex-row gap-2 items-center justify-center">
                                 <input type="text" maxLength={32} className="text-center bg-black/80 border border-gray-700 text-gray-100 rounded-lg py-1 text-base font-mono focus:outline-none" style={{ width: '520px', paddingLeft: 0, paddingRight: 0, fontFamily: 'monospace' }} placeholder="Enter referral code" disabled={started} value={refInput} onChange={e => setRefInput(e.target.value)} />
                             </div>
-                            <button className="px-4 py-1.5 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 disabled:opacity-60" disabled={started || refLoading} onClick={async () => { setRefError(null); setRefLoading(true); const bytes32 = toBytes32(refInput); try { await writeContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'applyReferralCode', args: [bytes32], account: account.address }); } catch (e: any) { setRefError(e?.message || 'Error applying referral code'); } setRefLoading(false); }}>{refLoading ? 'Applying...' : 'Apply'}</button>
-                            <button className="px-4 py-1.5 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 disabled:opacity-60" disabled={started || refLoading} onClick={async () => { setRefError(null); setRefLoading(true); const bytes32 = toBytes32(refInput); try { await writeContract(config, { abi: rouletteAbi, address: rouletteAddress, functionName: 'createReferralCode', args: [bytes32], account: account.address }); } catch (e: any) { setRefError(e?.message || 'Error creating referral code'); } setRefLoading(false); }}>{refLoading ? 'Creating...' : 'Create'}</button>
+                            <button className="px-4 py-1.5 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 disabled:opacity-60" disabled={started || refLoading} onClick={handleApplyReferral}>{refLoading ? 'Applying...' : 'Apply'}</button>
+                            <button className="px-4 py-1.5 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 disabled:opacity-60" disabled={started || refLoading} onClick={handleCreateReferral}>{refLoading ? 'Creating...' : 'Create'}</button>
                             {refError && (<div className="text-xs text-red-400 font-mono mt-1">{refError}</div>)}
-                            <div className="text-gray-300 text-sm mt-0">Your referrer: <span className="font-mono text-yellow-200">---</span></div>
-                            <div className="text-gray-300 text-sm mt-0">Referrals: <span className="font-mono text-yellow-200">{playerStats.totalReferrals}</span></div>
+                            <div className="text-gray-300 text-sm mt-0">Your referrer: <span className="font-mono text-yellow-200">{yourReferrer ? `${yourReferrer.slice(0, 8)}...${yourReferrer.slice(-4)}` : '---'}</span></div>
+                            <div className="text-gray-300 text-sm mt-0">Referrals: <span className="font-mono text-yellow-200">{referralsCount !== null ? referralsCount : 0}</span></div>
+                            <div className="text-gray-300 text-sm mt-0">Your code: {yourReferralCode ? (
+                                <span
+                                    className="font-mono text-yellow-200 cursor-pointer underline hover:text-yellow-400"
+                                    title="Click to copy"
+                                    onClick={() => { navigator.clipboard.writeText(yourReferralCode); }}
+                                >{yourReferralCode}</span>
+                            ) : <span className="font-mono text-gray-500">---</span>}</div>
                         </div>
                     </div>
                 </div>

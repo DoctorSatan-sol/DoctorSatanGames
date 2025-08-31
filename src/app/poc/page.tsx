@@ -1,18 +1,53 @@
 
 "use client";
+// TypeScript: declare custom property for manual nonce management
+declare global {
+	interface Window {
+		_gwNonceRef?: { value: number | null, address: string | null };
+	}
+}
+
+// Helper: get highest pending nonce for address from mempool (if any), else use latest
+async function getInitialGameWalletNonce(provider: any, address: string): Promise<number> {
+	// Try to get all pending transactions from mempool (block 'pending')
+	try {
+		const pendingBlock = await provider.send('eth_getBlockByNumber', ['pending', true]);
+		let maxPendingNonce: number | null = null;
+		if (pendingBlock && pendingBlock.transactions && Array.isArray(pendingBlock.transactions)) {
+			for (const tx of pendingBlock.transactions) {
+				if (tx.from && tx.from.toLowerCase() === address.toLowerCase()) {
+					const txNonce = parseInt(tx.nonce, 16);
+					if (maxPendingNonce === null || txNonce > maxPendingNonce) {
+						maxPendingNonce = txNonce;
+					}
+				}
+			}
+		}
+		if (maxPendingNonce !== null) {
+			return maxPendingNonce + 1;
+		}
+	} catch (e) {
+		// fallback below
+	}
+	// Fallback: use latest confirmed nonce
+	const latestNonce = await provider.getTransactionCount(address, 'latest');
+	return latestNonce;
+}
 
 import { useEffect, useState } from "react";
 import { Wallet, HDNodeWallet, ethers } from "ethers";
 import React from "react";
 import { simulateContract, writeContract, waitForTransactionReceipt, readContract } from "@wagmi/core";
 import { toast } from "react-hot-toast";
-import { useChainId, useConfig, useReadContract, useAccount, useWatchContractEvent } from "wagmi";
-import { chains, pocAbi } from "@/constants";
+import { useChainId, useConfig, useReadContract, useAccount, useWatchContractEvent, useBalance } from "wagmi";
+import { chains, pocAbi, chainlinkAbi } from "@/constants";
 import "../roulette/hide-scrollbar.css";
 import { useGameWalletContext } from "@/components/GameWalletContext";
 
 
 export default function ProofOfClickUI() {
+	// Получаем адрес обычного кошелька через wagmi
+	const { address } = useAccount();
 	// Game Wallet context
 	const { useGameWallet, setUseGameWallet } = useGameWalletContext();
 	// Для Game Wallet
@@ -26,16 +61,29 @@ export default function ProofOfClickUI() {
 			} else {
 				setGameWalletAddress(null);
 			}
-		} catch { setGameWalletAddress(null); }
-	}, [useGameWallet]);
-	const { address } = useAccount();
-		// Новые значения из ABI
+		} catch (e) {
+			setGameWalletAddress(null);
+		}
+	}, []);
+
 	// Для totalUserClicks, totalUserReferrals, totalUserWins нужен адрес пользователя, можно добавить позже через useAccount
- // ...existing code...
- const [showDetails, setShowDetails] = React.useState(false);
- const chainId = useChainId();
- const config = useConfig();
- const pocAddress = chains[chainId]?.poc as `0x${string}`;
+	// ...existing code...
+	const [showDetails, setShowDetails] = React.useState(false);
+	const chainId = useChainId();
+	const config = useConfig();
+	const pocAddress = chains[chainId]?.poc as `0x${string}`;
+	// Баланс контракта для расчета цены
+	const { data: nativeBalance } = useBalance({ address: pocAddress });
+
+// Chainlink FTM/USD (или другой native/USD) для расчета цены в $ (address должен быть в chains[chainId]?.chainlink)
+const { data: roundData } = useReadContract({
+	abi: chainlinkAbi,
+	address: chains[chainId]?.chainlink as `0x${string}`,
+	functionName: 'latestRoundData',
+	query: { enabled: !!chains[chainId]?.chainlink }
+});
+const answer = roundData && Array.isArray(roundData) ? roundData[1] : BigInt(0);
+const nativePriceUSD = answer ? Number(answer) / 1e8 : 0;
  // Live feed for WinnerMinted
  const [liveFeed, setLiveFeed] = useState<any[]>([]);
 
@@ -131,7 +179,96 @@ export default function ProofOfClickUI() {
 		 }
 	 },
  });
- // Статистика и балансы (без queryKey)
+// Referral System state
+const [refInput, setRefInput] = useState("");
+const [refLoading, setRefLoading] = useState(false);
+const [refError, setRefError] = useState<string | null>(null);
+const [yourReferrer, setYourReferrer] = useState<string | null>(null);
+const [referralsCount, setReferralsCount] = useState<number | null>(null);
+const [yourReferralCode, setYourReferralCode] = useState<string | null>(null);
+// Helper for bytes32
+function toBytes32(str: string): string {
+	const encoder = new TextEncoder();
+	let bytes = encoder.encode(str);
+	if (bytes.length > 32) bytes = bytes.slice(0, 32);
+	const padded = new Uint8Array(32);
+	padded.set(bytes);
+	return '0x' + Array.from(padded).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Fetch referral info
+async function fetchReferralInfo() {
+	const selectedAddress = useGameWallet ? gameWalletAddress : address;
+	if (!pocAddress || !selectedAddress) return;
+	try {
+		const ref = await readContract(config, { abi: pocAbi, address: pocAddress, functionName: 'referrerOf', args: [selectedAddress] });
+		const refStr = typeof ref === 'string' ? ref : '';
+		setYourReferrer(refStr && refStr !== '0x0000000000000000000000000000000000000000' ? refStr : null);
+		// Fetch your referral code
+		const code = await readContract(config, { abi: pocAbi, address: pocAddress, functionName: 'referralCodeOf', args: [selectedAddress] });
+		let codeStr = '';
+		if (typeof code === 'string' && code !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+			// Convert bytes32 to string (strip trailing zeros)
+			codeStr = Buffer.from(code.replace(/^0x/, ''), 'hex').toString('utf8').replace(/\u0000+$/, '').replace(/\0+$/, '');
+		}
+		setYourReferralCode(codeStr || null);
+	// Get totalReferrals from totalUserReferrals mapping
+	const totalReferrals = await readContract(config, { abi: pocAbi, address: pocAddress, functionName: 'totalUserReferrals', args: [selectedAddress] });
+	setReferralsCount(Number(totalReferrals));
+	} catch {}
+}
+useEffect(() => { fetchReferralInfo(); }, [pocAddress, address, gameWalletAddress, useGameWallet]);
+
+// Apply referral code
+async function handleApplyReferral() {
+	setRefError(null); setRefLoading(true);
+	try {
+		const bytes32 = toBytes32(refInput);
+		if (useGameWallet) {
+			// Use Game Wallet for referral
+			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
+			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
+			const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+			const wallet = new Wallet(sessionKey, provider);
+			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
+			await contract.applyReferralCode(bytes32);
+		} else {
+			await writeContract(config, { abi: pocAbi, address: pocAddress, functionName: 'applyReferralCode', args: [bytes32] });
+		}
+		toast.success('Referral code applied!');
+		setRefInput("");
+		fetchReferralInfo();
+	} catch (e: any) {
+		setRefError(e?.message || 'Error applying referral code');
+	}
+	setRefLoading(false);
+}
+// Create referral code
+async function handleCreateReferral() {
+	setRefError(null); setRefLoading(true);
+	try {
+		const bytes32 = toBytes32(refInput);
+		if (useGameWallet) {
+			// Use Game Wallet for referral
+			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
+			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
+			const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+			const wallet = new Wallet(sessionKey, provider);
+			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
+			await contract.createReferralCode(bytes32);
+		} else {
+			await writeContract(config, { abi: pocAbi, address: pocAddress, functionName: 'createReferralCode', args: [bytes32] });
+		}
+		toast.success('Referral code created!');
+		setRefInput("");
+		fetchReferralInfo();
+	} catch (e: any) {
+		setRefError(e?.message || 'Error creating referral code');
+	}
+	setRefLoading(false);
+}
 const [gwUserClicks, setGwUserClicks] = useState<number|null>(null);
 const [gwUserWins, setGwUserWins] = useState<number|null>(null);
 const [userBalance, setUserBalance] = useState<number|null>(null);
@@ -140,7 +277,47 @@ const [totalClicks, setTotalClicks] = useState<number|null>(null);
 const [userClicks, setUserClicks] = useState<number|null>(null);
 const [userWins, setUserWins] = useState<number|null>(null);
 const [totalSupply, setTotalSupply] = useState<number|null>(null);
+
 const [maxSupply, setMaxSupply] = useState<number|null>(null);
+
+// Состояния для модального окна сжигания
+const [showBurnModal, setShowBurnModal] = useState(false);
+const [burnAmount, setBurnAmount] = useState<string>('');
+const [burnLoading, setBurnLoading] = useState(false);
+// Функция для сжигания токенов
+async function handleBurn() {
+	if (!pocAddress || !burnAmount || isNaN(Number(burnAmount))) return;
+	setBurnLoading(true);
+	try {
+		const amount = ethers.parseUnits(burnAmount, 18);
+		if (useGameWallet) {
+			// Burn via Game Wallet
+			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
+			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
+			const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+			const wallet = new Wallet(sessionKey, provider);
+			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
+			await contract.burn(amount);
+		} else {
+			if (!address) return;
+			await writeContract(config, {
+				abi: pocAbi,
+				address: pocAddress,
+				functionName: 'burn',
+				args: [amount],
+			});
+		}
+		toast.success('Tokens burned successfully!');
+		setShowBurnModal(false);
+		setBurnAmount('');
+		fetchStats();
+	} catch (e) {
+		toast.error('Burn failed');
+	} finally {
+		setBurnLoading(false);
+	}
+}
 
 async function fetchStats() {
 	if (!pocAddress) return;
@@ -158,7 +335,28 @@ async function fetchStats() {
 }
 
 useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
- // Для Burn Supply, Price, TVL C, TVL $ — если нет прямых методов, оставить "..." или добавить позже
+// Для Burn Supply, Price, TVL C, TVL $ — если нет прямых методов, оставить "..." или добавить позже
+
+// Цена токена: 1 * баланс контракта (native) / totalSupply
+let price: string | number = '...';
+let tvl: string | number = '...';
+let priceUSD: string | number = '...';
+let tvlUSD: string | number = '...';
+if (nativeBalance) {
+	const contractNative = Number(nativeBalance.value) / 1e18;
+	tvl = contractNative.toLocaleString(undefined, { maximumFractionDigits: 4 });
+	if (nativePriceUSD) {
+		tvlUSD = (contractNative * nativePriceUSD).toLocaleString(undefined, { maximumFractionDigits: 2 });
+	}
+}
+if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
+	const contractNative = Number(nativeBalance.value) / 1e18;
+	const supply = Number(totalSupply) / 1e18;
+	price = (contractNative / supply).toFixed(6);
+	if (nativePriceUSD) {
+		priceUSD = ((contractNative / supply) * nativePriceUSD).toFixed(6);
+	}
+}
 
 	 // Основные значения
 	 const { data: currentReward } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "currentReward", query: { enabled: !!pocAddress } });
@@ -178,23 +376,15 @@ useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
 	 const { data: liquidityShare } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "LIQUIDITY_SHARE", query: { enabled: !!pocAddress } });
 	 const { data: liquidityVault } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "liquidityVault", query: { enabled: !!pocAddress } });
 		// ...existing code...
+
 		const [isClicking, setIsClicking] = useState(false);
-	// Очередь для Game Wallet транзакций
-	const [gwTxQueue, setGwTxQueue] = useState<any[]>([]);
-	const gwTxQueueRef = React.useRef<any[]>([]);
-	const gwTxProcessing = React.useRef(false);
 
-	// Синхронизируем ref с состоянием очереди
-	useEffect(() => { gwTxQueueRef.current = gwTxQueue; }, [gwTxQueue]);
-
-		// Функция для обработки очереди Game Wallet (обрабатывает всю очередь подряд)
-		async function processGwTxQueue() {
-			if (gwTxProcessing.current) return;
-			gwTxProcessing.current = true;
-			try {
-				while (gwTxQueueRef.current.length > 0) {
-					const next = gwTxQueueRef.current[0];
-					const toastId = toast.loading('Processing click...');
+		async function handleClick() {
+			if (!pocAddress || !config) return;
+			if (useGameWallet) {
+				// При первом клике (или после обновления страницы) определяем стартовый nonce
+				if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
+				(async () => {
 					try {
 						const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
 						if (!sessionKey) throw new Error('Game Wallet не разблокирован');
@@ -202,45 +392,32 @@ useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
 						const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 						const wallet = new Wallet(sessionKey, provider);
 						const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
-						await contract._click({ value: ethers.parseEther('0.01') });
-						toast.success('Click sent (Game Wallet)', { id: toastId });
+						const address = await wallet.getAddress();
+						// Если адрес сменился — сбрасываем nonce
+						if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
+						if (window._gwNonceRef.address !== address) {
+							window._gwNonceRef.value = null;
+							window._gwNonceRef.address = address;
+						}
+						// Получаем стартовый nonce только если он ещё не был получен или некорректен
+						if (!window._gwNonceRef || window._gwNonceRef.value === null || isNaN(window._gwNonceRef.value)) {
+							if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
+							window._gwNonceRef.value = await getInitialGameWalletNonce(provider, address);
+						}
+						contract._click({ value: ethers.parseEther('0.01'), nonce: window._gwNonceRef.value });
+						if (window._gwNonceRef) window._gwNonceRef.value++;
+						toast.success('Click sent (Game Wallet)');
 					} catch {
-						toast.error('Click failed', { id: toastId });
+						toast.error('Click failed');
 					}
-					// Сразу обновляем статистику и ленту
-					fetchStats();
-					fetchPastWinners();
-					refetchRoundId();
-					refetchPlayersInRound();
 					setPageClicks(c => c + 1);
-					// Удаляем обработанную транзакцию
-					gwTxQueueRef.current = gwTxQueueRef.current.slice(1);
-					setGwTxQueue(gwTxQueueRef.current);
-				}
-			} finally {
-				gwTxProcessing.current = false;
-			}
-		}
-
-		useEffect(() => {
-			if (useGameWallet && gwTxQueue.length > 0 && !gwTxProcessing.current) {
-				processGwTxQueue();
-			}
-			// eslint-disable-next-line react-hooks/exhaustive-deps
-		}, [gwTxQueue, useGameWallet]);
-
-		async function handleClick() {
-			if (!pocAddress || !config) return;
-			setIsClicking(true);
-			if (useGameWallet) {
-				// Добавляем в очередь, обработка очереди асинхронная
-				setGwTxQueue(q => [...q, { ts: Date.now() }]);
-				setIsClicking(false);
+					debouncedStatsUpdate();
+				})();
 				return;
 			}
+			setIsClicking(true);
 			const toastId = toast.loading('Processing click...');
 			try {
-				// Обычный кошелек через wagmi
 				await simulateContract(config, {
 					abi: pocAbi,
 					address: pocAddress,
@@ -252,12 +429,8 @@ useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
 					value: BigInt(0.01 * 1e18),
 				}));
 				toast.success('Click sent', { id: toastId });
-				// Сразу обновляем статистику и ленту
-				fetchStats();
-				fetchPastWinners();
-				refetchRoundId();
-				refetchPlayersInRound();
 				setPageClicks(c => c + 1);
+				debouncedStatsUpdate();
 			} catch (error) {
 				toast.error('Click failed', { id: toastId });
 			} finally {
@@ -265,6 +438,21 @@ useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
 			}
 		}
 	// ...existing code...
+	// Disable click button только для обычного кошелька
+	const clickDisabled = useGameWallet ? false : isClicking;
+
+	// Debounced stats update (1 секунда)
+	const statsUpdateTimeout = React.useRef<NodeJS.Timeout | null>(null);
+	function debouncedStatsUpdate() {
+		if (statsUpdateTimeout.current) clearTimeout(statsUpdateTimeout.current);
+		statsUpdateTimeout.current = setTimeout(() => {
+			fetchStats();
+			fetchPastWinners();
+			refetchRoundId();
+			refetchPlayersInRound();
+		}, 1000);
+	}
+
 	return (
 		<div key={refreshTrigger} className="min-h-screen bg-gradient-to-b from-red-950 to-black flex flex-col items-center justify-start pt-4">
 			{/* Переключатель Game Wallet */}
@@ -306,7 +494,85 @@ useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
 				</div>
 				{/* Referral System + Leaderboard — 1/5 экрана */}
 				<div className="flex flex-col gap-4 basis-full md:basis-1/5 max-w-full md:max-w-[20%] mb-5 md:mb-0 h-[340px] order-2">
-					<div className="bg-black/60 border-2 border-red-800 rounded-xl p-6 flex flex-col justify-between shadow-lg gap-0.5">
+					<div className="bg-black/60 border-2 border-red-800 rounded-xl p-6 flex flex-col justify-between shadow-lg gap-0.5 relative">
+		{/* Burn button */}
+		<button
+			className="absolute top-2 right-2 flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-br from-yellow-500 via-red-700 to-black border border-yellow-400 rounded-full text-sm text-white font-extrabold shadow-md hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-400/70"
+			style={{ boxShadow: '0 0 8px 1px #fbbf24cc, 0 1px 0 #fff4 inset' }}
+			onClick={() => setShowBurnModal(true)}
+		>
+			<svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M12 2c.28 0 .53.15.66.39l3.5 6.06a.75.75 0 0 1-.66 1.11H8.5a.75.75 0 0 1-.66-1.11l3.5-6.06A.75.75 0 0 1 12 2Zm0 2.62L10.13 7.5h3.74L12 4.62ZM5.25 9.5A.75.75 0 0 1 6 8.75h12a.75.75 0 0 1 .75.75v7A6.25 6.25 0 0 1 12.5 22h-1A6.25 6.25 0 0 1 5.25 16.5v-7Zm1.5.75v6.25a4.75 4.75 0 0 0 4.75 4.75h1a4.75 4.75 0 0 0 4.75-4.75V10.25h-10.5Z"/></svg>
+			<span className="drop-shadow">Burn</span>
+		</button>
+{/* Модальное окно для сжигания токенов */}
+{showBurnModal && (
+	<div className="fixed inset-0 z-50 flex items-center justify-center" style={{background: 'rgba(20, 0, 0, 0.75)', backdropFilter: 'blur(2px)'}}>
+		<div className="relative animate-fade-in-up bg-gradient-to-br from-black/90 via-red-950 to-black/80 border-2 border-red-700 rounded-2xl p-8 shadow-2xl flex flex-col gap-5 min-w-[340px] max-w-[95vw] w-full max-w-md" style={{boxShadow:'0 8px 40px 0 #7f1d1dcc, 0 2px 0 #fff4 inset'}}>
+			<button onClick={() => setShowBurnModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-red-300 text-2xl font-bold transition-colors">×</button>
+					<div className="flex flex-col items-center gap-2">
+										<label className="flex w-full cursor-pointer items-center justify-between rounded-lg bg-gray-900/50 p-3 border border-gray-800 mb-2">
+											<span className="text-gray-300">Use Game Wallet</span>
+											<div className="relative">
+												<input type="checkbox" className="peer sr-only" checked={useGameWallet} onChange={e => setUseGameWallet(e.target.checked)} disabled={burnLoading} />
+												<div className="block h-6 w-10 rounded-full bg-gray-600 peer-checked:bg-red-600 transition-colors"></div>
+												<div className="dot absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-full"></div>
+											</div>
+										</label>
+				<div className="w-14 h-14 rounded-full bg-gradient-to-br from-red-700 to-red-900 flex items-center justify-center shadow-lg mb-2">
+					<svg width="32" height="32" fill="none" viewBox="0 0 24 24"><path fill="#fff" d="M12 2c.28 0 .53.15.66.39l3.5 6.06a.75.75 0 0 1-.66 1.11H8.5a.75.75 0 0 1-.66-1.11l3.5-6.06A.75.75 0 0 1 12 2Zm0 2.62L10.13 7.5h3.74L12 4.62ZM5.25 9.5A.75.75 0 0 1 6 8.75h12a.75.75 0 0 1 .75.75v7A6.25 6.25 0 0 1 12.5 22h-1A6.25 6.25 0 0 1 5.25 16.5v-7Zm1.5.75v6.25a4.75 4.75 0 0 0 4.75 4.75h1a4.75 4.75 0 0 0 4.75-4.75V10.25h-10.5Z"/></svg>
+				</div>
+				<h2 className="text-2xl font-extrabold text-red-200 mb-1 text-center drop-shadow">Burn tokens</h2>
+				<div className="text-gray-300 text-center text-sm mb-2">Enter the amount of tokens you want to burn. This action is irreversible!</div>
+			</div>
+			<div className="relative mb-2">
+				<input
+					type="number"
+					min="0"
+					step="any"
+					className="w-full p-3 rounded-lg bg-black/80 border-2 border-red-700 text-red-200 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-gray-500 shadow-inner pr-32 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+					placeholder="Amount to burn"
+					value={burnAmount}
+					onChange={e => setBurnAmount(e.target.value)}
+					disabled={burnLoading}
+				/>
+				<div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
+								<button
+									className="px-2 py-1 text-sm bg-red-900/50 hover:bg-red-800 text-red-200 rounded shadow border border-red-700 font-bold transition-all duration-150 disabled:opacity-60"
+									disabled={burnLoading || !(useGameWallet ? gwBalance : userBalance)}
+									onClick={() => {
+										const bal = useGameWallet ? gwBalance : userBalance;
+										if (bal) setBurnAmount((Number(bal) / 2e18).toFixed(6));
+									}}
+								>Half</button>
+								<button
+									className="px-2 py-1 text-sm bg-red-900/50 hover:bg-red-800 text-red-200 rounded shadow border border-red-700 font-bold transition-all duration-150 disabled:opacity-60"
+									disabled={burnLoading || !(useGameWallet ? gwBalance : userBalance)}
+									onClick={() => {
+										const bal = useGameWallet ? gwBalance : userBalance;
+										if (bal) setBurnAmount((Number(bal) / 1e18).toFixed(6));
+									}}
+								>Max</button>
+				</div>
+			</div>
+			<div className="flex gap-3 mt-2">
+				<button
+					className="flex-1 px-4 py-2 bg-gradient-to-r from-red-700 to-red-900 border-2 border-red-500 rounded-lg text-white font-bold shadow-lg hover:scale-105 active:scale-95 transition-all duration-150 disabled:opacity-60"
+					onClick={handleBurn}
+					disabled={burnLoading || !burnAmount || isNaN(Number(burnAmount)) || Number(burnAmount) <= 0}
+				>
+					{burnLoading ? 'Burning...' : 'Confirm'}
+				</button>
+				<button
+					className="flex-1 px-4 py-2 bg-gray-800 border-2 border-gray-600 rounded-lg text-white font-bold shadow-lg hover:scale-105 active:scale-95 transition-all duration-150"
+					onClick={() => setShowBurnModal(false)}
+					disabled={burnLoading}
+				>
+					Cancel
+				</button>
+			</div>
+		</div>
+	</div>
+)}
 						<h2 className="text-lg font-bold text-red-200 mb-0 text-center">My Statistics</h2>
 						<div className="text-xs text-yellow-400 mb-1">Wallet</div>
 						
@@ -340,31 +606,50 @@ useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
 						</div>
 						<div className="flex justify-between text-base text-yellow-200 font-mono">
 							<span>Price:</span>
-							<span className="font-bold">...</span>
+							<span className="font-bold">{price} S{priceUSD !== '...' ? ` / ${priceUSD} $` : ''}</span>
 						</div>
 						<div className="flex justify-between text-base text-yellow-200 font-mono">
-							<span>TVL C:</span>
-							<span className="font-bold">...</span>
+							<span>TVL:</span>
+							<span className="font-bold">{tvl} S{tvlUSD !== '...' ? ` / ${tvlUSD} $` : ''}</span>
 						</div>
-						<div className="flex justify-between text-base text-yellow-200 font-mono">
-							<span>TVL $:</span>
-							<span className="font-bold">...</span>
-						</div>
-						
 					</div>
-					<div className="w-half max-w-4xl mb-8">
-						<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
-							<h3 className="text-yellow-300 text-lg font-bold mb-1 text-center">Referral System</h3>
-							<div className="flex flex-col md:flex-row gap-2 items-center justify-center">
-								<input type="text" maxLength={32} className="text-center bg-black/80 border border-gray-700 text-gray-100 rounded-lg py-1 text-base font-mono focus:outline-none" style={{ width: '520px', paddingLeft: 0, paddingRight: 0, fontFamily: 'monospace' }} placeholder="Enter referral code" disabled value="" />
-							</div>
-							<button className="px-4 py-1.5 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow transition-all duration-150 disabled:opacity-60" disabled>Apply</button>
-							<button className="px-4 py-1.5 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow transition-all duration-150 disabled:opacity-60" disabled>Create</button>
-							<div className="text-gray-300 text-sm mt-0">Your referrer: <span className="font-mono text-yellow-200">---</span></div>
-							<div className="text-gray-300 text-sm mt-0">Referrals: <span className="font-mono text-yellow-200">0</span></div>
-						</div>
-						
-					</div>
+										<div className="w-half max-w-4xl mb-8">
+												<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
+														<h3 className="text-yellow-300 text-lg font-bold mb-1 text-center">Referral System</h3>
+														<div className="flex flex-col md:flex-row gap-2 items-center justify-center">
+																<input
+																	type="text"
+																	maxLength={32}
+																	className="text-center bg-black/80 border border-gray-700 text-gray-100 rounded-lg py-1 text-base font-mono focus:outline-none"
+																	style={{ width: '520px', paddingLeft: 0, paddingRight: 0, fontFamily: 'monospace' }}
+																	placeholder="Enter referral code"
+																	value={refInput}
+																	onChange={e => setRefInput(e.target.value)}
+																	disabled={refLoading}
+																/>
+														</div>
+														<button
+															className="px-4 py-1.5 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 disabled:opacity-60"
+															disabled={refLoading || !refInput}
+															onClick={handleApplyReferral}
+														>{refLoading ? 'Applying...' : 'Apply'}</button>
+														<button
+															className="px-4 py-1.5 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 disabled:opacity-60"
+															disabled={refLoading || !refInput}
+															onClick={handleCreateReferral}
+														>{refLoading ? 'Creating...' : 'Create'}</button>
+														{refError && (<div className="text-xs text-red-400 font-mono mt-1">{refError}</div>)}
+														<div className="text-gray-300 text-sm mt-0">Your referrer: <span className="font-mono text-yellow-200">{yourReferrer ? `${yourReferrer.slice(0, 8)}...${yourReferrer.slice(-4)}` : '---'}</span></div>
+														<div className="text-gray-300 text-sm mt-0">Referrals: <span className="font-mono text-yellow-200">{referralsCount !== null ? referralsCount : 0}</span></div>
+														<div className="text-gray-300 text-sm mt-0">Your code: {yourReferralCode ? (
+															<span
+																className="font-mono text-yellow-200 cursor-pointer underline hover:text-yellow-400"
+																title="Click to copy"
+																onClick={() => { navigator.clipboard.writeText(yourReferralCode); }}
+															>{yourReferralCode}</span>
+														) : <span className="font-mono text-gray-500">---</span>}</div>
+												</div>
+										</div>
 				</div>
 				{/* Proof Of Click — 2/5 экрана */}
 				<div className="bg-black/60 border-1 border-red-700 rounded-xl p-8 w-full md:basis-2/5 md:max-w-[40%] shadow-lg flex flex-col justify-start order-1">
@@ -391,7 +676,7 @@ useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
 							>
 																								<div className="flex justify-between text-base text-yellow-200 font-mono">
 																									<span>Ожидает отправки:</span>
-																									<span className="font-bold">{useGameWallet ? gwTxQueue.length : 0}</span>
+																									<span className="font-bold">0</span>
 																								</div>
 								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Current Reward:</span><span className="font-bold">{currentReward ? (Number(currentReward) / 1e18).toLocaleString() : '...'}</span></div>
 								
