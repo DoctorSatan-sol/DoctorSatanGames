@@ -4,8 +4,9 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@paintswap/vrf/contracts/PaintswapVRFConsumer.sol";
 import "@paintswap/vrf/contracts/interfaces/IPaintswapVRFCoordinator.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract POC is PaintswapVRFConsumer, ERC20 {
+contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
     error FeeTooLow();
     error FeeTransferFailed();
     error RefundFailed();
@@ -33,7 +34,6 @@ contract POC is PaintswapVRFConsumer, ERC20 {
     uint256 public constant FEE                     = 0.01 ether;
     uint256 public constant LIQUIDITY_SHARE         = 5;
     uint32  public constant CALLBACK_GAS_LIMIT      = 200_000;
-    uint256 public constant MAX_BATCH_SIZE = 500;
 
     mapping(uint256 => mapping(uint256 => address)) public players;
     mapping(uint256 => uint256) public playerCount;
@@ -63,16 +63,26 @@ contract POC is PaintswapVRFConsumer, ERC20 {
         lastHalvingRound = 0;
     }
 
-    function _click() public payable {
+    function _click() public payable nonReentrant {
         if (msg.value < FEE) revert FeeTooLow();
 
         bool timeIsUp = (block.timestamp >= lastRoundTs + ROUND_DURATION);
         bool hasPlayers = (playerCount[roundId] > 0);
+        uint256 vrfFee = 0;
 
         if (timeIsUp && hasPlayers) {
-            uint256 vrfFee = IPaintswapVRFCoordinator(_vrfCoordinator).calculateRequestPriceNative(CALLBACK_GAS_LIMIT);
+            vrfFee = IPaintswapVRFCoordinator(_vrfCoordinator).calculateRequestPriceNative(CALLBACK_GAS_LIMIT);
             if (address(this).balance < vrfFee) revert InsufficientContractBalance();
+        }
+        
+        address referrer = referrerOf[msg.sender];
+        uint256 cashback = 0;
+        if (referrer != address(0)) {
+            cashback = (FEE * 5) / 10000;
+        }
+        uint256 liquidityAmount = (FEE * LIQUIDITY_SHARE) / 100;
 
+        if (timeIsUp && hasPlayers) {
             uint256 count = playerCount[roundId];
             uint256 rewardForRound = rewardPerRound[roundId];
             if (rewardForRound == 0) rewardForRound = currentReward;
@@ -101,39 +111,27 @@ contract POC is PaintswapVRFConsumer, ERC20 {
         players[roundId][idx] = msg.sender;
         playerCount[roundId] = idx + 1;
 
-        emit Clicked(roundId, msg.sender);
         totalClicks += 1;
         totalUserClicks[msg.sender] += 1;
+        
+        emit Clicked(roundId, msg.sender);
 
-        uint256 liquidityAmount = (FEE * LIQUIDITY_SHARE) / 100;
-        (bool ok, ) = payable(liquidityVault).call{value: liquidityAmount}("");
-        if (!ok) revert FeeTransferFailed();
-
-        address referrer = referrerOf[msg.sender];
-        uint256 cashback;
-
-        if (referrer != address(0)) {
-            cashback    = (FEE * 5)  / 10000;  // 0.05%
-            if (totalUserClicks[msg.sender] % 100 == 0) {
+        if (referrer != address(0) && (totalUserClicks[msg.sender] % 100 == 0)) {
             idx = playerCount[roundId];
             players[roundId][idx] = referrer;
             playerCount[roundId] = idx + 1;
         }
+
+        (bool ok, ) = payable(liquidityVault).call{value: liquidityAmount}("");
+        if (!ok) revert FeeTransferFailed();
+
+        if (cashback > 0) {
             (ok, ) = payable(msg.sender).call{value: cashback}("");
             if (!ok) revert FeeTransferFailed();
         }
     }
 
-    function batchClick(uint256 n) external payable {
-        if (n == 0 || n > MAX_BATCH_SIZE) revert InvalidBatchSize();
-        if (msg.value < FEE * n) revert FeeTooLow();
-
-        for (uint256 i = 0; i < n; i += 1) {
-            _click();
-        }
-    }
-
-    function burn(uint256 amount) external {
+    function burn(uint256 amount) external nonReentrant {
         if (amount == 0) revert NothingToBurn();
 
         uint256 contractBalance = address(this).balance;

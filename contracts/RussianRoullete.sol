@@ -79,7 +79,6 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
         }
 
         uint256 stake = msg.value - vrfFee;
-
         if (msg.value < 1 ether) {
             revert BetTooSmall();
         }
@@ -92,21 +91,29 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
             revert PayoutExceedsLimit();
         }
 
+        address referrer = referrerOf[msg.sender];
+        uint256 referralFee;
+        uint256 cashback;
+        if (referrer != address(0)) {
+            referralFee = (stake * 10) / 10000;
+            cashback = (stake * 5) / 10000;
+        }
+        uint256 amountToVault = stake - referralFee - cashback;
+
         requestId = IPaintswapVRFCoordinator(_vrfCoordinator).requestRandomnessPayInNative{value: vrfFee}(
             CALLBACK_GAS_LIMIT,
             1,
             address(liquidityVault)
         );
-        address referrer = referrerOf[msg.sender];
-        uint256 referralFee;
-        uint256 cashback;
 
-        if (referrer != address(0)) {
-            referralFee = (stake * 10) / 10000;  // 0.10%
-            cashback    = (stake * 5)  / 10000;  // 0.05%
-        }
-
-        uint256 amountToVault = stake - referralFee - cashback;
+        bets[requestId] = Bet(msg.sender, stake, bullets);
+        liquidityVault.increaseReserve(potentialFairPayout);
+        totalBets += stake;
+        totalGamesPlayed += 1;
+        playerInfo[msg.sender].totalBetsAmount += stake;
+        playerInfo[msg.sender].totalGamesPlayed += 1;
+        
+        emit BetPlaced(requestId, msg.sender, stake, bullets);
 
         (bool success, ) = payable(address(liquidityVault)).call{value: amountToVault}("");
         if (!success) revert FailedToTransferStake();
@@ -120,14 +127,6 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
             (success, ) = payable(msg.sender).call{value: cashback}("");
             if (!success) revert FailedToTransferStake();
         }
-        
-        bets[requestId] = Bet(msg.sender, stake, bullets);
-        liquidityVault.increaseReserve(potentialFairPayout);
-        totalBets += stake;
-        totalGamesPlayed += 1;
-        playerInfo[msg.sender].totalBetsAmount += stake;
-        playerInfo[msg.sender].totalGamesPlayed += 1;
-        emit BetPlaced(requestId, msg.sender, stake, bullets);
     }
 
     function _fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
