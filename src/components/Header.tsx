@@ -2,6 +2,8 @@
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { FaXTwitter } from "react-icons/fa6";
+import { FaGithub } from "react-icons/fa";
+import { SiGitbook } from "react-icons/si";
 import Link from "next/link";
 
 export default function Header() {
@@ -30,6 +32,31 @@ export default function Header() {
           >
             <div className="absolute inset-0 bg-red-900 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
             <FaXTwitter className="text-red-500 group-hover:text-red-300 text-2xl z-10" />
+
+          </a>
+        </div>
+        <div className="flex items-center">
+          <a
+            href="https://github.com/DoctorSatan-sol/DoctorSatanGames"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center w-12 h-12 rounded-md bg-black border-2 border-red-800 hover:bg-red-900/80 hover:border-red-500 transition-all duration-300 shadow-lg hover:shadow-red-700/70 group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-red-900 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+            <FaGithub className="text-red-500 group-hover:text-red-300 text-2xl z-10" />
+            
+          </a>
+        </div>
+        <div className="flex items-center">
+          <a
+            href="https://doctorsatangames.gitbook.io/doctorsatangames-docs/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center w-12 h-12 rounded-md bg-black border-2 border-red-800 hover:bg-red-900/80 hover:border-red-500 transition-all duration-300 shadow-lg hover:shadow-red-700/70 group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-red-900 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+            <SiGitbook className="text-red-500 group-hover:text-red-300 text-2xl z-10" />
+            
           </a>
         </div>
 
