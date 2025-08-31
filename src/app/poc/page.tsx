@@ -674,10 +674,6 @@ if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
 								className="bg-black/70 border-2 border-yellow-700 rounded-xl px-6 py-4 shadow-lg flex flex-col gap-2 w-full max-w-md cursor-pointer select-none"
 								onClick={() => setShowDetails((v) => !v)}
 							>
-																								<div className="flex justify-between text-base text-yellow-200 font-mono">
-																									<span>Pending to send:</span>
-																									<span className="font-bold">0</span>
-																								</div>
 								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Current Reward:</span><span className="font-bold">{currentReward ? (Number(currentReward) / 1e18).toLocaleString() : '...'}</span></div>
 								
 								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Current Block (Round):</span><span className="font-bold">{roundId !== undefined ? Number(roundId).toLocaleString() : '...'}</span></div>
