@@ -46,11 +46,11 @@ import { useGameWalletContext } from "@/components/GameWalletContext";
 
 
 export default function ProofOfClickUI() {
-	// Получаем адрес обычного кошелька через wagmi
+	// Get regular wallet address via wagmi
 	const { address } = useAccount();
 	// Game Wallet context
 	const { useGameWallet, setUseGameWallet } = useGameWalletContext();
-	// Для Game Wallet
+	// For Game Wallet
 	const [gameWalletAddress, setGameWalletAddress] = useState<string | null>(null);
 	useEffect(() => {
 		try {
@@ -66,16 +66,16 @@ export default function ProofOfClickUI() {
 		}
 	}, []);
 
-	// Для totalUserClicks, totalUserReferrals, totalUserWins нужен адрес пользователя, можно добавить позже через useAccount
+	// For totalUserClicks, totalUserReferrals, totalUserWins you need the user address, can be added later via useAccount
 	// ...existing code...
 	const [showDetails, setShowDetails] = React.useState(false);
 	const chainId = useChainId();
 	const config = useConfig();
 	const pocAddress = chains[chainId]?.poc as `0x${string}`;
-	// Баланс контракта для расчета цены
+	// Contract balance for price calculation
 	const { data: nativeBalance } = useBalance({ address: pocAddress });
 
-// Chainlink FTM/USD (или другой native/USD) для расчета цены в $ (address должен быть в chains[chainId]?.chainlink)
+// Chainlink FTM/USD (or other native/USD) for price in $ (address should be in chains[chainId]?.chainlink)
 const { data: roundData } = useReadContract({
 	abi: chainlinkAbi,
 	address: chains[chainId]?.chainlink as `0x${string}`,
@@ -675,7 +675,7 @@ if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
 								onClick={() => setShowDetails((v) => !v)}
 							>
 																								<div className="flex justify-between text-base text-yellow-200 font-mono">
-																									<span>Ожидает отправки:</span>
+																									<span>Pending to send:</span>
 																									<span className="font-bold">0</span>
 																								</div>
 								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Current Reward:</span><span className="font-bold">{currentReward ? (Number(currentReward) / 1e18).toLocaleString() : '...'}</span></div>
@@ -684,7 +684,7 @@ if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
 								
 								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Clicks in Round:</span><span className="font-bold">{playersInRound !== undefined ? Number(playersInRound).toLocaleString() : '...'}</span></div>
 								
-								<div className="text-xs text-yellow-300 text-center mt-2">{showDetails ? "Скрыть детали ▲" : "Показать детали ▼"}</div>
+								<div className="text-xs text-yellow-300 text-center mt-2">{showDetails ? "Hide details ▲" : "Show details ▼"}</div>
 																			{showDetails && (
 																				<div className="mt-3 flex flex-col gap-2 animate-fade-in">
 														
