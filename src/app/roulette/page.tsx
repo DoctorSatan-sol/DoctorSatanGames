@@ -49,7 +49,9 @@ export default function RussianRoulette() {
     const [yourReferrer, setYourReferrer] = useState<string | null>(null);
     const [referralsCount, setReferralsCount] = useState<number | null>(null);
     const [yourReferralCode, setYourReferralCode] = useState<string | null>(null);
+    const SONIC_RPC_URL = 'https://sonic-rpc.publicnode.com';
     // ...existing code...
+    
 
     async function fetchReferralInfo() {
         const selectedAddress = useGameWallet
@@ -89,7 +91,6 @@ export default function RussianRoulette() {
             if (useGameWallet) {
                 const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
                 if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-                const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
                 const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
                 const wallet = new ethers.Wallet(sessionKey, provider);
                 const contract = new ethers.Contract(rouletteAddress, rouletteAbi, wallet);
@@ -110,7 +111,6 @@ export default function RussianRoulette() {
             if (useGameWallet) {
                 const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
                 if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-                const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
                 const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
                 const wallet = new ethers.Wallet(sessionKey, provider);
                 const contract = new ethers.Contract(rouletteAddress, rouletteAbi, wallet);
@@ -194,7 +194,7 @@ export default function RussianRoulette() {
         setErrorMsg(null);
         setMultiBetProgress({ current: 0, total: gamesToPlay });
 
-        const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
+        
         const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
         const gameWallet = new ethers.Wallet(sessionKey, provider);
         const rouletteContract = new ethers.Contract(rouletteAddress, rouletteAbi, gameWallet);
@@ -249,7 +249,6 @@ export default function RussianRoulette() {
         setErrorMsg(null);
         
         try {
-            const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
             const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
             const gameWallet = new ethers.Wallet(sessionKey, provider);
             const betValue = ethers.parseEther(bet);
