@@ -89,7 +89,7 @@ export default function RussianRoulette() {
             if (useGameWallet) {
                 const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
                 if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-                const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+                const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
                 const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
                 const wallet = new ethers.Wallet(sessionKey, provider);
                 const contract = new ethers.Contract(rouletteAddress, rouletteAbi, wallet);
@@ -110,7 +110,7 @@ export default function RussianRoulette() {
             if (useGameWallet) {
                 const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
                 if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-                const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+                const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
                 const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
                 const wallet = new ethers.Wallet(sessionKey, provider);
                 const contract = new ethers.Contract(rouletteAddress, rouletteAbi, wallet);
@@ -194,7 +194,7 @@ export default function RussianRoulette() {
         setErrorMsg(null);
         setMultiBetProgress({ current: 0, total: gamesToPlay });
 
-        const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+        const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
         const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
         const gameWallet = new ethers.Wallet(sessionKey, provider);
         const rouletteContract = new ethers.Contract(rouletteAddress, rouletteAbi, gameWallet);
@@ -249,7 +249,7 @@ export default function RussianRoulette() {
         setErrorMsg(null);
         
         try {
-            const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+            const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
             const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
             const gameWallet = new ethers.Wallet(sessionKey, provider);
             const betValue = ethers.parseEther(bet);
@@ -483,7 +483,7 @@ export default function RussianRoulette() {
                                     const color = item.alive ? 'bg-green-700 border-green-400' : 'bg-red-800 border-red-400';
                                     const xLabel = item.x && Number(item.x) > 0 ? `x${item.x}` : 'x0';
                                     const tooltip = `Player: ${item.player}\nSpin: ${item.spin + 1}\n${item.alive ? 'WIN' : 'LOSE'}\nAmount: ${item.amount}\nPayout: ${item.payout}\nX: ${item.x}\n${new Date(item.time).toLocaleTimeString()}`;
-                                    const link = item.txHash ? `https://testnet.sonicscan.org/tx/${item.txHash}` : `https://testnet.sonicscan.org/address/${item.player}`;
+                                    const link = item.txHash ? `https://sonicscan.org/tx/${item.txHash}` : `https://sonicscan.org/address/${item.player}`;
                                     return (
                                         <a key={idx} href={link} target="_blank" rel="noopener noreferrer" title={tooltip} className={`flex-shrink-0 flex flex-col items-center justify-center rounded-lg border-2 shadow transition hover:scale-105 cursor-pointer ${color}`} style={{ flexBasis: '60px', width: '60px', height: '60px' }}>
                                             <span className="font-bold text-lg select-none">{xLabel}</span>

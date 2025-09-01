@@ -16,14 +16,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <GameWalletProvider>
           <Providers>
             <link href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" rel="stylesheet" />
-            
             <Header />
             {children}
-
             <div className="fixed bottom-5 right-5 z-50">
               <GameWallet />
             </div>
-
           </Providers>
         </GameWalletProvider>
       </body>

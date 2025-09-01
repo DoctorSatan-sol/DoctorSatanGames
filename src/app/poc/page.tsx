@@ -92,7 +92,7 @@ const nativePriceUSD = answer ? Number(answer) / 1e8 : 0;
 	 if (!pocAddress) return;
 	 try {
 		 const { ethers } = await import("ethers");
-		 const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+		 const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 		 const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 		 const contract = new ethers.Contract(pocAddress, pocAbi, provider);
 		 const filter = contract.filters.WinnerMinted();
@@ -228,7 +228,7 @@ async function handleApplyReferral() {
 			// Use Game Wallet for referral
 			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
 			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-			const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+			const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 			const wallet = new Wallet(sessionKey, provider);
 			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
@@ -253,7 +253,7 @@ async function handleCreateReferral() {
 			// Use Game Wallet for referral
 			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
 			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-			const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+			const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 			const wallet = new Wallet(sessionKey, provider);
 			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
@@ -294,7 +294,7 @@ async function handleBurn() {
 			// Burn via Game Wallet
 			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
 			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-			const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+			const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 			const wallet = new Wallet(sessionKey, provider);
 			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
@@ -388,7 +388,7 @@ if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
 					try {
 						const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
 						if (!sessionKey) throw new Error('Game Wallet не разблокирован');
-						const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+						const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 						const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 						const wallet = new Wallet(sessionKey, provider);
 						const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
@@ -479,7 +479,7 @@ if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
 											</div>
 											<div className="flex justify-between items-center text-white font-mono text-xs">
 												<span>Tx:</span>
-												<a href={`https://ftmscan.com/tx/${item.txHash}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline truncate max-w-[120px]">{item.txHash?.slice(0, 8)}...{item.txHash?.slice(-6)}</a>
+												<a href={`https://sonicscan.org/tx/${item.txHash}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline truncate max-w-[120px]">{item.txHash?.slice(0, 8)}...{item.txHash?.slice(-6)}</a>
 											</div>
 											<div className="flex justify-between items-center text-white font-mono text-xs">
 												<span>Time:</span>

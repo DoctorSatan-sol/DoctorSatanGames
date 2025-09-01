@@ -17,10 +17,10 @@ export const chains: ContractsConfig = {
         no_check: null,
     },
     146: {
-        pool: "null",
-        chainlink: "null",
-        roulette: "null",
-		poc:"null",
+        pool: "0x6394259CBAdf5c6DB423cf14A11a27c84de352ED",
+        chainlink: "0xc76dFb89fF298145b417d221B2c747d84952e01d",
+        roulette: "0x00D48E5a72E2AD946A2393aa0921E89d37e940d2",
+		poc:"0xc3934D6C41A57CD61Eba8fC33d1C278ef7264830",
         no_check: null,
     }
 }

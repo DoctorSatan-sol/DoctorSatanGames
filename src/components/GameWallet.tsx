@@ -5,7 +5,7 @@ import { ethers, Wallet, HDNodeWallet, Contract } from 'ethers';
 import { useGameWalletContext } from '@/components/GameWalletContext';
 import { chains, pocAbi } from '@/constants';
 
-const SONIC_RPC_URL = 'https://rpc.blaze.soniclabs.com';
+const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 
 const NeonInput = ({ value, onChange, placeholder, type = 'text' }: { value: string, onChange: (val: string) => void, placeholder: string, type?: string }) => (
