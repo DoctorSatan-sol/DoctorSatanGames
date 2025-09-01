@@ -19,6 +19,9 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
     error CannotBeOwnReferrer();
     error UserAlreadyHasCode();
     error InvalidBatchSize();
+    error MaxBatchSizeExceeded();
+    error BatchSizeMustBePositive();
+    error InsufficientValueForBatch();
 
     uint256 public maxSupply;
     uint256 public currentReward;
@@ -63,26 +66,16 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
         lastHalvingRound = 0;
     }
 
-    function _click() public payable nonReentrant {
-        if (msg.value < FEE) revert FeeTooLow();
-
+    function _performClickLogic(address clicker) internal returns (uint256) {
         bool timeIsUp = (block.timestamp >= lastRoundTs + ROUND_DURATION);
         bool hasPlayers = (playerCount[roundId] > 0);
         uint256 vrfFee = 0;
+        uint256 actualCost = FEE;
 
         if (timeIsUp && hasPlayers) {
             vrfFee = IPaintswapVRFCoordinator(_vrfCoordinator).calculateRequestPriceNative(CALLBACK_GAS_LIMIT);
-            if (address(this).balance < vrfFee) revert InsufficientContractBalance();
-        }
-        
-        address referrer = referrerOf[msg.sender];
-        uint256 cashback = 0;
-        if (referrer != address(0)) {
-            cashback = (FEE * 5) / 10000;
-        }
-        uint256 liquidityAmount = (FEE * LIQUIDITY_SHARE) / 100;
+            actualCost += vrfFee;
 
-        if (timeIsUp && hasPlayers) {
             uint256 count = playerCount[roundId];
             uint256 rewardForRound = rewardPerRound[roundId];
             if (rewardForRound == 0) rewardForRound = currentReward;
@@ -107,16 +100,23 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
             lastRoundTs = block.timestamp;
         }
 
+        address referrer = referrerOf[clicker];
+        uint256 cashback = 0;
+        if (referrer != address(0)) {
+            cashback = (FEE * 5) / 10000;
+        }
+        uint256 liquidityAmount = (FEE * LIQUIDITY_SHARE) / 100;
+
         uint256 idx = playerCount[roundId];
-        players[roundId][idx] = msg.sender;
+        players[roundId][idx] = clicker;
         playerCount[roundId] = idx + 1;
 
         totalClicks += 1;
-        totalUserClicks[msg.sender] += 1;
+        totalUserClicks[clicker] += 1;
         
-        emit Clicked(roundId, msg.sender);
+        emit Clicked(roundId, clicker);
 
-        if (referrer != address(0) && (totalUserClicks[msg.sender] % 100 == 0)) {
+        if (referrer != address(0) && (totalUserClicks[clicker] % 100 == 0)) {
             idx = playerCount[roundId];
             players[roundId][idx] = referrer;
             playerCount[roundId] = idx + 1;
@@ -126,8 +126,43 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
         if (!ok) revert FeeTransferFailed();
 
         if (cashback > 0) {
-            (ok, ) = payable(msg.sender).call{value: cashback}("");
+            (ok, ) = payable(clicker).call{value: cashback}("");
             if (!ok) revert FeeTransferFailed();
+        }
+
+        return actualCost;
+    }
+
+    function _click() public payable nonReentrant {
+        uint256 actualCost = _performClickLogic(msg.sender);
+
+        if (msg.value < actualCost) revert FeeTooLow();
+
+        uint256 change = msg.value - actualCost;
+        if (change > 0) {
+            (bool success, ) = payable(msg.sender).call{value: change}("");
+            if (!success) revert RefundFailed();
+        }
+    }
+
+    function batchClick(uint256 n) public payable nonReentrant {
+        if (n == 0) revert BatchSizeMustBePositive();
+        if (n > 500) revert MaxBatchSizeExceeded();
+
+        uint256 totalCost = 0;
+        
+        unchecked {
+            for (uint256 i = 0; i < n; i++) {
+                totalCost += _performClickLogic(msg.sender);
+            }
+        }
+        
+        if (msg.value < totalCost) revert InsufficientValueForBatch();
+
+        uint256 change = msg.value - totalCost;
+        if (change > 0) {
+            (bool success, ) = payable(msg.sender).call{value: change}("");
+            if (!success) revert RefundFailed();
         }
     }
 
