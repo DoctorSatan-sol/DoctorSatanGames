@@ -41,6 +41,7 @@ import { simulateContract, writeContract, waitForTransactionReceipt, readContrac
 import { toast } from "react-hot-toast";
 import { useChainId, useConfig, useReadContract, useAccount, useWatchContractEvent, useBalance } from "wagmi";
 import { chains, pocAbi, chainlinkAbi } from "@/constants";
+import { paintswapVrfCoordinatorAbi, PAINTSWAP_VRF_COORDINATOR, CALLBACK_GAS_LIMIT } from "@/paintswapVrf";
 import "../roulette/hide-scrollbar.css";
 import { useGameWalletContext } from "@/components/GameWalletContext";
 
@@ -337,6 +338,7 @@ async function fetchStats() {
 useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
 // Для Burn Supply, Price, TVL C, TVL $ — если нет прямых методов, оставить "..." или добавить позже
 
+
 // Цена токена: 1 * баланс контракта (native) / totalSupply
 let price: string | number = '...';
 let tvl: string | number = '...';
@@ -357,6 +359,17 @@ if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
 		priceUSD = ((contractNative / supply) * nativePriceUSD).toFixed(6);
 	}
 }
+
+// VRF fee calculation (like in roulette)
+const { data: vrfFeeData } = useReadContract({
+	abi: paintswapVrfCoordinatorAbi,
+	address: PAINTSWAP_VRF_COORDINATOR,
+	functionName: 'calculateRequestPriceNative',
+	args: [CALLBACK_GAS_LIMIT],
+	query: { enabled: true },
+});
+const [vrfFee, setVrfFee] = useState<bigint | null>(null);
+useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [vrfFeeData]);
 
 	 // Основные значения
 	 const { data: currentReward } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "currentReward", query: { enabled: !!pocAddress } });
@@ -391,22 +404,25 @@ if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
 						const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 						const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 						const wallet = new Wallet(sessionKey, provider);
-						const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
-						const address = await wallet.getAddress();
-						// Если адрес сменился — сбрасываем nonce
-						if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
-						if (window._gwNonceRef.address !== address) {
-							window._gwNonceRef.value = null;
-							window._gwNonceRef.address = address;
-						}
-						// Получаем стартовый nonce только если он ещё не был получен или некорректен
-						if (!window._gwNonceRef || window._gwNonceRef.value === null || isNaN(window._gwNonceRef.value)) {
-							if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
-							window._gwNonceRef.value = await getInitialGameWalletNonce(provider, address);
-						}
-						contract._click({ value: ethers.parseEther('0.01'), nonce: window._gwNonceRef.value });
-						if (window._gwNonceRef) window._gwNonceRef.value++;
-						toast.success('Click sent (Game Wallet)');
+											const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
+											const address = await wallet.getAddress();
+											// Если адрес сменился — сбрасываем nonce
+											if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
+											if (window._gwNonceRef.address !== address) {
+												window._gwNonceRef.value = null;
+												window._gwNonceRef.address = address;
+											}
+											// Получаем стартовый nonce только если он ещё не был получен или некорректен
+											if (!window._gwNonceRef || window._gwNonceRef.value === null || isNaN(window._gwNonceRef.value)) {
+												if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
+												window._gwNonceRef.value = await getInitialGameWalletNonce(provider, address);
+											}
+											// Calculate total value: 0.01 + vrfFee
+											const baseValue = ethers.parseEther('0.01');
+											const totalValue = vrfFee ? baseValue + vrfFee : baseValue;
+											await contract._click({ value: totalValue, nonce: window._gwNonceRef.value });
+											if (window._gwNonceRef) window._gwNonceRef.value++;
+											toast.success('Click sent (Game Wallet)');
 					} catch {
 						toast.error('Click failed');
 					}
@@ -418,16 +434,19 @@ if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
 			setIsClicking(true);
 			const toastId = toast.loading('Processing click...');
 			try {
-				await simulateContract(config, {
-					abi: pocAbi,
-					address: pocAddress,
-					functionName: '_click',
-					value: BigInt(0.01 * 1e18),
-				})
-				.then(simulation => writeContract(config, {
-					...simulation.request,
-					value: BigInt(0.01 * 1e18),
-				}));
+									// Calculate total value: 0.01 + vrfFee
+									const baseValue = BigInt(0.01 * 1e18);
+									const totalValue = vrfFee ? baseValue + vrfFee : baseValue;
+									await simulateContract(config, {
+										abi: pocAbi,
+										address: pocAddress,
+										functionName: '_click',
+										value: totalValue,
+									})
+									.then(simulation => writeContract(config, {
+										...simulation.request,
+										value: totalValue,
+									}));
 				toast.success('Click sent', { id: toastId });
 				setPageClicks(c => c + 1);
 				debouncedStatsUpdate();
