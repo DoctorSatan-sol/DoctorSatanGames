@@ -73,7 +73,7 @@ export default function ProofOfClickUI() {
 	const chainId = useChainId();
 	const config = useConfig();
 	const pocAddress = chains[chainId]?.poc as `0x${string}`;
-	// Contract balance for price calculation
+	const SONIC_RPC_URL = 'https://sonic-rpc.publicnode.com';
 	const { data: nativeBalance } = useBalance({ address: pocAddress });
 
 // Chainlink FTM/USD (or other native/USD) for price in $ (address should be in chains[chainId]?.chainlink)
@@ -93,7 +93,6 @@ const nativePriceUSD = answer ? Number(answer) / 1e8 : 0;
 	 if (!pocAddress) return;
 	 try {
 		 const { ethers } = await import("ethers");
-		 const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 		 const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 		 const contract = new ethers.Contract(pocAddress, pocAbi, provider);
 		 const filter = contract.filters.WinnerMinted();
@@ -229,7 +228,6 @@ async function handleApplyReferral() {
 			// Use Game Wallet for referral
 			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
 			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-			const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 			const wallet = new Wallet(sessionKey, provider);
 			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
@@ -254,7 +252,6 @@ async function handleCreateReferral() {
 			// Use Game Wallet for referral
 			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
 			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-			const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 			const wallet = new Wallet(sessionKey, provider);
 			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
@@ -295,7 +292,6 @@ async function handleBurn() {
 			// Burn via Game Wallet
 			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
 			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-			const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 			const wallet = new Wallet(sessionKey, provider);
 			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
@@ -401,7 +397,6 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 					try {
 						const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
 						if (!sessionKey) throw new Error('Game Wallet не разблокирован');
-						const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 						const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 						const wallet = new Wallet(sessionKey, provider);
 											const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
