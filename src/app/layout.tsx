@@ -1,6 +1,6 @@
 "use client";
 
-import type { Metadata } from "next";
+import { metadata } from "./metadata";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ReactNode } from "react";
@@ -12,6 +12,12 @@ import { GameWalletProvider } from '@/components/GameWalletContext';
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <title>{metadata.title as string}</title>
+        <meta name="description" content={metadata.description as string} />
+        <link rel="icon" href="/icon.png" type="image/png" />
+        <link href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" rel="stylesheet" />
+      </head>
       <body>
         <GameWalletProvider>
           <Providers>
