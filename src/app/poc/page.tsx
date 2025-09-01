@@ -145,7 +145,62 @@ const nativePriceUSD = answer ? Number(answer) / 1e8 : 0;
  // Загружать при монтировании
  useEffect(() => { fetchPastWinners(); }, [pocAddress]);
  const [refreshTrigger, setRefreshTrigger] = useState(0);
- const [pageClicks, setPageClicks] = useState(0);
+const [pageClicks, setPageClicks] = useState(0);
+// Новый счетчик для batchClick
+const [pendingClicks, setPendingClicks] = useState(0);
+const batchClickTimeout = React.useRef<NodeJS.Timeout | null>(null);
+
+// Функция для отправки batchClick (по 500 за раз)
+async function sendBatchClicks(n: number) {
+	if (!pocAddress || !config) return;
+	if (n <= 0) return;
+	const send = async (count: number) => {
+		try {
+			// Считаем сумму: count * 0.01 + vrfFee
+			const baseValue = ethers.parseEther('0.01');
+			const countBig = BigInt(count);
+			const totalValue = baseValue * countBig + (vrfFee ? BigInt(vrfFee) : BigInt(0));
+			if (useGameWallet) {
+				const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
+				if (!sessionKey) throw new Error('Game Wallet не разблокирован');
+				const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+				const wallet = new Wallet(sessionKey, provider);
+				const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
+				await contract.batchClick(count, { value: totalValue });
+			} else {
+				await writeContract(config, {
+					abi: pocAbi,
+					address: pocAddress,
+					functionName: 'batchClick',
+					args: [count],
+					value: totalValue,
+				});
+			}
+			toast.success(`batchClick(${count}) sent`);
+		} catch (e) {
+			toast.error('batchClick failed');
+		}
+		debouncedStatsUpdate();
+	};
+	// Отправлять по 500 за раз
+	let left = n;
+	while (left > 0) {
+		const toSend = Math.min(left, 500);
+		await send(toSend);
+		left -= toSend;
+	}
+}
+
+// Debounce-функция для отправки batchClick после паузы
+function scheduleBatchClick() {
+	if (batchClickTimeout.current) clearTimeout(batchClickTimeout.current);
+	batchClickTimeout.current = setTimeout(() => {
+		if (pendingClicks > 0) {
+			sendBatchClicks(pendingClicks);
+			setPendingClicks(0);
+		}
+	}, 500); // 500 мс после последнего клика
+}
  useWatchContractEvent({
 	 address: pocAddress,
 	 abi: pocAbi,
@@ -388,68 +443,10 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 
 		const [isClicking, setIsClicking] = useState(false);
 
-		async function handleClick() {
-			if (!pocAddress || !config) return;
-			if (useGameWallet) {
-				// При первом клике (или после обновления страницы) определяем стартовый nonce
-				if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
-				(async () => {
-					try {
-						const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
-						if (!sessionKey) throw new Error('Game Wallet не разблокирован');
-						const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
-						const wallet = new Wallet(sessionKey, provider);
-											const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
-											const address = await wallet.getAddress();
-											// Если адрес сменился — сбрасываем nonce
-											if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
-											if (window._gwNonceRef.address !== address) {
-												window._gwNonceRef.value = null;
-												window._gwNonceRef.address = address;
-											}
-											// Получаем стартовый nonce только если он ещё не был получен или некорректен
-											if (!window._gwNonceRef || window._gwNonceRef.value === null || isNaN(window._gwNonceRef.value)) {
-												if (!window._gwNonceRef) window._gwNonceRef = { value: null, address: null };
-												window._gwNonceRef.value = await getInitialGameWalletNonce(provider, address);
-											}
-											// Calculate total value: 0.01 + vrfFee
-											const baseValue = ethers.parseEther('0.01');
-											const totalValue = vrfFee ? baseValue + vrfFee : baseValue;
-											await contract._click({ value: totalValue, nonce: window._gwNonceRef.value });
-											if (window._gwNonceRef) window._gwNonceRef.value++;
-											toast.success('Click sent (Game Wallet)');
-					} catch {
-						toast.error('Click failed');
-					}
-					setPageClicks(c => c + 1);
-					debouncedStatsUpdate();
-				})();
-				return;
-			}
-			setIsClicking(true);
-			const toastId = toast.loading('Processing click...');
-			try {
-									// Calculate total value: 0.01 + vrfFee
-									const baseValue = BigInt(0.01 * 1e18);
-									const totalValue = vrfFee ? baseValue + vrfFee : baseValue;
-									await simulateContract(config, {
-										abi: pocAbi,
-										address: pocAddress,
-										functionName: '_click',
-										value: totalValue,
-									})
-									.then(simulation => writeContract(config, {
-										...simulation.request,
-										value: totalValue,
-									}));
-				toast.success('Click sent', { id: toastId });
-				setPageClicks(c => c + 1);
-				debouncedStatsUpdate();
-			} catch (error) {
-				toast.error('Click failed', { id: toastId });
-			} finally {
-				setIsClicking(false);
-			}
+		function handleClick() {
+			setPageClicks(c => c + 1);
+			setPendingClicks(c => c + 1);
+			scheduleBatchClick();
 		}
 	// ...existing code...
 	// Disable click button только для обычного кошелька
