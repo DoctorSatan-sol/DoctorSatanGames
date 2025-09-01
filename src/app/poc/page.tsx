@@ -160,14 +160,20 @@ async function sendBatchClicks(n: number) {
 			const baseValue = ethers.parseEther('0.01');
 			const countBig = BigInt(count);
 			const totalValue = baseValue * countBig + (vrfFee ? BigInt(vrfFee) : BigInt(0));
-			if (useGameWallet) {
-				const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
-				if (!sessionKey) throw new Error('Game Wallet не разблокирован');
-				const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
-				const wallet = new Wallet(sessionKey, provider);
-				const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
-				await contract.batchClick(count, { value: totalValue });
-			} else {
+						if (useGameWallet) {
+								const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
+								if (!sessionKey) throw new Error('Game Wallet не разблокирован');
+								const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+								const wallet = new Wallet(sessionKey, provider);
+								const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
+								await contract.batchClick(count, { value: totalValue });
+								// После успешной транзакции — пересчитать nonce
+								if (window._gwNonceRef) {
+									const address = await wallet.getAddress();
+									window._gwNonceRef.value = await getInitialGameWalletNonce(provider, address);
+									window._gwNonceRef.address = address;
+								}
+						} else {
 				await writeContract(config, {
 					abi: pocAbi,
 					address: pocAddress,
