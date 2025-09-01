@@ -13,7 +13,7 @@ export const chains: ContractsConfig = {
         pool: "0x6394259CBAdf5c6DB423cf14A11a27c84de352ED",
         chainlink: "0xc76dFb89fF298145b417d221B2c747d84952e01d",
         roulette: "0x00D48E5a72E2AD946A2393aa0921E89d37e940d2",
-		poc:"0xBE2bF593c4F1611B606814FBa01b4e19f43e99EE",
+		poc:"0x763A86406c0e1B0A501b3b6c1A1876179a0Dd2E6",
         no_check: null,
     }
 }
@@ -1321,6 +1321,11 @@ export const pocAbi = [
 	},
 	{
 		"inputs": [],
+		"name": "BatchSizeMustBePositive",
+		"type": "error"
+	},
+	{
+		"inputs": [],
 		"name": "CannotBeOwnReferrer",
 		"type": "error"
 	},
@@ -1427,7 +1432,17 @@ export const pocAbi = [
 	},
 	{
 		"inputs": [],
+		"name": "InsufficientValueForBatch",
+		"type": "error"
+	},
+	{
+		"inputs": [],
 		"name": "InvalidBatchSize",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "MaxBatchSizeExceeded",
 		"type": "error"
 	},
 	{
@@ -1534,6 +1549,19 @@ export const pocAbi = [
 		"inputs": [
 			{
 				"internalType": "uint256",
+				"name": "n",
+				"type": "uint256"
+			}
+		],
+		"name": "batchClick",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
 			}
@@ -1614,6 +1642,13 @@ export const pocAbi = [
 			}
 		],
 		"name": "rawFulfillRandomWords",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "registerMe",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
