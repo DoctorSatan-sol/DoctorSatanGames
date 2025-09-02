@@ -88,7 +88,7 @@ const nativePriceUSD = answer ? Number(answer) / 1e8 : 0;
  // Live feed for WinnerMinted
  const [liveFeed, setLiveFeed] = useState<any[]>([]);
 
- // Загрузка всех прошлых WinnerMinted (универсальная функция)
+ // Load all past WinnerMinted events (universal function)
  async function fetchPastWinners() {
 	 if (!pocAddress) return;
 	 try {
@@ -126,7 +126,7 @@ const nativePriceUSD = answer ? Number(answer) / 1e8 : 0;
 			 };
 		 });
 		 setLiveFeed(prev => {
-			 // Мержим новые события с предыдущими по txHash (уникальность)
+			 // Merge new events with previous ones by txHash (uniqueness)
 			 const all = [...events.reverse(), ...prev];
 			 const unique = [];
 			 const seen = new Set();
@@ -142,32 +142,38 @@ const nativePriceUSD = answer ? Number(answer) / 1e8 : 0;
 	 } catch {}
  }
 
- // Загружать при монтировании
+ // Load on mount
  useEffect(() => { fetchPastWinners(); }, [pocAddress]);
  const [refreshTrigger, setRefreshTrigger] = useState(0);
 const [pageClicks, setPageClicks] = useState(0);
-// Новый счетчик для batchClick
+// New counter for batchClick
 const [pendingClicks, setPendingClicks] = useState(0);
+const pendingClicksRef = React.useRef(0);
 const batchClickTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
-// Функция для отправки batchClick (по 500 за раз)
+// Track the actual value of pendingClicks
+React.useEffect(() => {
+	pendingClicksRef.current = pendingClicks;
+}, [pendingClicks]);
+
+// Function to send batchClick (500 at a time)
 async function sendBatchClicks(n: number) {
 	if (!pocAddress || !config) return;
 	if (n <= 0) return;
 	const send = async (count: number) => {
 		try {
-			// Считаем сумму: count * 0.01 + vrfFee
+			// Calculate the sum: count * 0.01 + vrfFee
 			const baseValue = ethers.parseEther('0.01');
 			const countBig = BigInt(count);
 			const totalValue = baseValue * countBig + (vrfFee ? BigInt(vrfFee) : BigInt(0));
 						if (useGameWallet) {
 								const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
-								if (!sessionKey) throw new Error('Game Wallet не разблокирован');
+								if (!sessionKey) throw new Error('Game Wallet is not unlocked');
 								const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
 								const wallet = new Wallet(sessionKey, provider);
 								const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
 								await contract.batchClick(count, { value: totalValue });
-								// После успешной транзакции — пересчитать nonce
+								// After a successful transaction — recalculate nonce
 								if (window._gwNonceRef) {
 									const address = await wallet.getAddress();
 									window._gwNonceRef.value = await getInitialGameWalletNonce(provider, address);
@@ -188,7 +194,7 @@ async function sendBatchClicks(n: number) {
 		}
 		debouncedStatsUpdate();
 	};
-	// Отправлять по 500 за раз
+	// Send in batches of 500 at a time
 	let left = n;
 	while (left > 0) {
 		const toSend = Math.min(left, 500);
@@ -197,26 +203,16 @@ async function sendBatchClicks(n: number) {
 	}
 }
 
-// Debounce-функция для отправки batchClick после паузы
+// Debounce function for sending batchClick after a pause
 function scheduleBatchClick() {
-	if (!batchClickTimeout.current) {
-		// Если таймер не запущен — отправить клик сразу
-		if (pendingClicks + 1 > 0) {
-			// pendingClicks еще не обновился, поэтому +1
-			setTimeout(() => {
-				sendBatchClicks(pendingClicks + 1);
-				setPendingClicks(0);
-			}, 0);
-			return;
-		}
-	}
 	if (batchClickTimeout.current) clearTimeout(batchClickTimeout.current);
 	batchClickTimeout.current = setTimeout(() => {
-		if (pendingClicks > 0) {
-			sendBatchClicks(pendingClicks);
+		const clicks = pendingClicksRef.current;
+		if (clicks > 0) {
+			sendBatchClicks(clicks);
 			setPendingClicks(0);
 		}
-	}, 500); // 500 мс после последнего клика
+	}, 500); // 500 ms after the last click
 }
  useWatchContractEvent({
 	 address: pocAddress,
@@ -226,7 +222,7 @@ function scheduleBatchClick() {
 		 for (const log of logs) {
 			 const args = (log as any).args;
 			 if (!args) continue;
-									 // Получить timestamp блока для нового WinnerMinted
+									 // Get block timestamp for new WinnerMinted
 									 (async () => {
 										 let blockTimestamp = Date.now();
 										 try {
@@ -349,12 +345,11 @@ const [userWins, setUserWins] = useState<number|null>(null);
 const [totalSupply, setTotalSupply] = useState<number|null>(null);
 
 const [maxSupply, setMaxSupply] = useState<number|null>(null);
-
-// Состояния для модального окна сжигания
+// State for the burn modal window
 const [showBurnModal, setShowBurnModal] = useState(false);
 const [burnAmount, setBurnAmount] = useState<string>('');
 const [burnLoading, setBurnLoading] = useState(false);
-// Функция для сжигания токенов
+// Function for burning tokens
 async function handleBurn() {
 	if (!pocAddress || !burnAmount || isNaN(Number(burnAmount))) return;
 	setBurnLoading(true);
@@ -404,10 +399,10 @@ async function fetchStats() {
 }
 
 useEffect(() => { fetchStats(); }, [pocAddress, address, gameWalletAddress]);
-// Для Burn Supply, Price, TVL C, TVL $ — если нет прямых методов, оставить "..." или добавить позже
+// For Burn Supply, Price, TVL C, TVL $ — if there are no direct methods, leave as "..." or add later
 
 
-// Цена токена: 1 * баланс контракта (native) / totalSupply
+// Token price: 1 * contract balance (native) / totalSupply
 let price: string | number = '...';
 let tvl: string | number = '...';
 let priceUSD: string | number = '...';
@@ -438,20 +433,19 @@ const { data: vrfFeeData } = useReadContract({
 });
 const [vrfFee, setVrfFee] = useState<bigint | null>(null);
 useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [vrfFeeData]);
+// Main values
+const { data: currentReward } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "currentReward", query: { enabled: !!pocAddress } });
+const { data: roundId, refetch: refetchRoundId } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "roundId", query: { enabled: !!pocAddress } });
+const { data: playersInRound, refetch: refetchPlayersInRound } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "playerCount", args: [roundId ?? 0], query: { enabled: !!pocAddress && roundId !== undefined } });
 
-	 // Основные значения
-	 const { data: currentReward } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "currentReward", query: { enabled: !!pocAddress } });
-	 const { data: roundId, refetch: refetchRoundId } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "roundId", query: { enabled: !!pocAddress } });
-	 const { data: playersInRound, refetch: refetchPlayersInRound } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "playerCount", args: [roundId ?? 0], query: { enabled: !!pocAddress && roundId !== undefined } });
-
-	 // Детальные значения для раскрывающегося меню
-	 const { data: tokenName } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "name", query: { enabled: !!pocAddress } });
-	 const { data: symbol } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "symbol", query: { enabled: !!pocAddress } });
-	 const { data: initialReward } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "INITIAL_REWARD", query: { enabled: !!pocAddress } });
-	 const { data: fee } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "FEE", query: { enabled: !!pocAddress } });
-	 const { data: halvingInterval } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "HALVING_INTERVAL_ROUNDS", query: { enabled: !!pocAddress } });
-	 const { data: lastHalvingRound } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "lastHalvingRound", query: { enabled: !!pocAddress } });
-	 const { data: nextHalvingRound } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "nextHalvingRound", query: { enabled: !!pocAddress } });
+// Detailed values for the dropdown menu
+const { data: tokenName } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "name", query: { enabled: !!pocAddress } });
+const { data: symbol } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "symbol", query: { enabled: !!pocAddress } });
+const { data: initialReward } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "INITIAL_REWARD", query: { enabled: !!pocAddress } });
+const { data: fee } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "FEE", query: { enabled: !!pocAddress } });
+const { data: halvingInterval } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "HALVING_INTERVAL_ROUNDS", query: { enabled: !!pocAddress } });
+const { data: lastHalvingRound } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "lastHalvingRound", query: { enabled: !!pocAddress } });
+const { data: nextHalvingRound } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "nextHalvingRound", query: { enabled: !!pocAddress } });
 	 const { data: roundDuration } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "ROUND_DURATION", query: { enabled: !!pocAddress } });
 	 const { data: lastRoundTs } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "lastRoundTs", query: { enabled: !!pocAddress } });
 	 const { data: liquidityShare } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "LIQUIDITY_SHARE", query: { enabled: !!pocAddress } });
@@ -466,10 +460,10 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 			scheduleBatchClick();
 		}
 	// ...existing code...
-	// Disable click button только для обычного кошелька
+	// Disable click button only for regular wallet
 	const clickDisabled = useGameWallet ? false : isClicking;
 
-	// Debounced stats update (1 секунда)
+	// Debounced stats update (1 second)
 	const statsUpdateTimeout = React.useRef<NodeJS.Timeout | null>(null);
 	function debouncedStatsUpdate() {
 		if (statsUpdateTimeout.current) clearTimeout(statsUpdateTimeout.current);
@@ -483,9 +477,9 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 
 	return (
 		<div key={refreshTrigger} className="min-h-screen bg-gradient-to-b from-red-950 to-black flex flex-col items-center justify-start pt-4">
-			{/* Переключатель Game Wallet */}
+			{/* Game Wallet toggle */}
 			<div className="flex flex-col md:flex-row gap-5 w-full justify-center items-stretch">
-				{/* Live Feed — 1/5 экрана */}
+				{/* Live Feed — 1/5 of the screen */}
 				<div className="flex flex-col basis-full md:basis-1/5 max-w-full md:max-w-[20%] mb-5 md:mb-0 md:mr-2">
 					<div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg w-full flex flex-col items-center">
 						<h2 className="text-lg font-bold text-red-200 mb-2 text-center">Live</h2>
