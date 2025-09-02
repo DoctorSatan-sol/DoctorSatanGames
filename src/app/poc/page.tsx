@@ -199,6 +199,17 @@ async function sendBatchClicks(n: number) {
 
 // Debounce-функция для отправки batchClick после паузы
 function scheduleBatchClick() {
+	if (!batchClickTimeout.current) {
+		// Если таймер не запущен — отправить клик сразу
+		if (pendingClicks + 1 > 0) {
+			// pendingClicks еще не обновился, поэтому +1
+			setTimeout(() => {
+				sendBatchClicks(pendingClicks + 1);
+				setPendingClicks(0);
+			}, 0);
+			return;
+		}
+	}
 	if (batchClickTimeout.current) clearTimeout(batchClickTimeout.current);
 	batchClickTimeout.current = setTimeout(() => {
 		if (pendingClicks > 0) {
@@ -511,7 +522,7 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 				</div>
 				{/* Referral System + Leaderboard — 1/5 экрана */}
 				<div className="flex flex-col gap-4 basis-full md:basis-1/5 max-w-full md:max-w-[20%] mb-5 md:mb-0 h-[340px] order-2">
-					<div className="bg-black/60 border-2 border-red-800 rounded-xl p-6 flex flex-col justify-between shadow-lg gap-0.5 relative">
+					<div className="bg-black/60 border-2 border-red-800 rounded-xl p-2 flex flex-col justify-between shadow-lg gap-0.5 relative">
 		{/* Burn button */}
 		<button
 			className="absolute top-2 right-2 flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-br from-yellow-500 via-red-700 to-black border border-yellow-400 rounded-full text-sm text-white font-extrabold shadow-md hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-400/70"
@@ -607,8 +618,8 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 							 <div className="text-gray-300 mb-1 flex justify-between text-green-400"><span>Balance:</span> <span className="font-mono text-green-400">{gwBalance ? (Number(gwBalance) / 1e18).toLocaleString() : '...'}C</span></div>
 						</div>
 					</div>
-					<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col justify-up shadow-lg">
-						<h2 className="text-lg font-bold text-yellow-200 mb-4 text-center">Info</h2>
+					<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-2 flex flex-col justify-up shadow-lg">
+						<h2 className="text-lg font-bold text-yellow-200 text-center">Info</h2>
 						<div className="flex justify-between text-base text-yellow-200 font-mono">
 							<span>Total Supply:</span>
 							<span className="font-bold">{totalSupply ? (Number(totalSupply) / 1e18).toLocaleString() : '...'}</span>
@@ -631,7 +642,7 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 						</div>
 					</div>
 										<div className="w-half max-w-4xl mb-8">
-												<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-6 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
+												<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-2 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
 														<h3 className="text-yellow-300 text-lg font-bold mb-1 text-center">Referral System</h3>
 														<div className="flex flex-col md:flex-row gap-2 items-center justify-center">
 																<input
@@ -668,10 +679,24 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 												</div>
 										</div>
 				</div>
-				{/* Proof Of Click — 2/5 экрана */}
-				<div className="bg-black/60 border-1 border-red-700 rounded-xl p-8 w-full md:basis-2/5 md:max-w-[40%] shadow-lg flex flex-col justify-start order-1">
-					<h1 className="text-4xl font-bold text-red-100 mb-8 text-center" style={{ textShadow: '2px 2px 4px rgba(220, 38, 38, 0.8)' }}>Proof Of Click</h1>
-					{/* Кнопка для Proof Of Click */}
+				{/* Proof Of Click */}
+					<div className="bg-black/60 border-1 border-red-700 rounded-xl p-8 w-full md:basis-2/5 md:max-w-[40%] shadow-lg flex flex-col justify-start order-1">
+						<div className="basis-[10%] min-w-[180px] flex-shrink-0 flex flex-col items-center">
+						<div className="flex items-center justify-center rounded-lg border-2 border-red-800 bg-black/1 p-1">
+							<span
+								className="text-5xl font-bold select-none"
+								style={{    
+									fontFamily: "'Creepster', cursive, sans-serif",
+									textShadow: '3px 3px 0 rgba(110, 100, 5, 1), 6px 6px 0 rgba(34, 33, 0, 1)',
+									letterSpacing: '12px',
+									color: '#ef4444',
+								}}
+							>
+								Click to hell
+							</span>
+						</div>
+					</div>
+					{/* Proof Of Click */}
 					 <div className="flex flex-col items-center mb-6">
 						 <button
 							 className="w-[380px] h-[380px] rounded-full bg-gradient-to-br from-red-700 via-red-900 to-black border-4 border-red-800 shadow-2xl flex items-center justify-center text-6xl font-extrabold text-white hover:scale-105 active:scale-95 transition-all duration-150 select-none"
@@ -681,14 +706,10 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 						 >
 							 CLICK ME
 						 </button>
-						 <div className="text-gray-400 text-sm mt-4">Click the button to play</div>
 							
-						{/* Информация о наградах и блоках */}
-						{/* Краткая инфа + раскрывающееся меню */}
-						{/* eslint-disable-next-line react-hooks/rules-of-hooks */}
 						<div className="mt-8 w-full flex flex-col items-center">
 							<div
-								className="bg-black/70 border-2 border-yellow-700 rounded-xl px-6 py-4 shadow-lg flex flex-col gap-2 w-full max-w-md cursor-pointer select-none"
+								className="bg-black/70 border-2 border-yellow-700 rounded-xl p-2 shadow-lg flex flex-col gap-t w-full max-w-md cursor-pointer select-none"
 								onClick={() => setShowDetails((v) => !v)}
 							>
 								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Current Reward:</span><span className="font-bold">{currentReward ? (Number(currentReward) / 1e18).toLocaleString() : '...'}</span></div>
@@ -696,20 +717,14 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Current Block (Round):</span><span className="font-bold">{roundId !== undefined ? Number(roundId).toLocaleString() : '...'}</span></div>
 								
 								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Clicks in Round:</span><span className="font-bold">{playersInRound !== undefined ? Number(playersInRound).toLocaleString() : '...'}</span></div>
-								
-								<div className="text-xs text-yellow-300 text-center mt-2">{showDetails ? "Hide details ▲" : "Show details ▼"}</div>
-																			{showDetails && (
-																				<div className="mt-3 flex flex-col gap-2 animate-fade-in">
 														
-														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Halving Interval:</span><span className="font-bold">{halvingInterval !== undefined ? Number(halvingInterval).toLocaleString() : '...'}</span></div>
+								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Halving Interval:</span><span className="font-bold">{halvingInterval !== undefined ? Number(halvingInterval).toLocaleString() : '...'}</span></div>
 														
-														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Last Halving Round:</span><span className="font-bold">{lastHalvingRound !== undefined ? Number(lastHalvingRound).toLocaleString() : '...'}</span></div>
+								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Last Halving Round:</span><span className="font-bold">{lastHalvingRound !== undefined ? Number(lastHalvingRound).toLocaleString() : '...'}</span></div>
 														
-														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Next Halving Round:</span><span className="font-bold">{nextHalvingRound !== undefined ? Number(nextHalvingRound).toLocaleString() : '...'}</span></div>
+								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Next Halving Round:</span><span className="font-bold">{nextHalvingRound !== undefined ? Number(nextHalvingRound).toLocaleString() : '...'}</span></div>
 														
-														<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Total Clicks:</span><span className="font-bold">{totalClicks !== undefined ? Number(totalClicks).toLocaleString() : '...'}</span></div>
-													</div>
-												)}
+								<div className="flex justify-between text-base text-yellow-200 font-mono"><span>Total Clicks:</span><span className="font-bold">{totalClicks !== undefined ? Number(totalClicks).toLocaleString() : '...'}</span></div>
 							</div>
 						</div>
 					</div>

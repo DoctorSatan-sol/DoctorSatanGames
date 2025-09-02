@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ethers, Wallet, HDNodeWallet, Contract } from 'ethers';
 import { useGameWalletContext } from '@/components/GameWalletContext';
+import { GrumpyWombatCheckbox } from './GrumpyWombatCheckbox';
 import { chains, pocAbi } from '@/constants';
 
 const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
@@ -308,10 +309,7 @@ export const GameWallet = () => {
                             </button>
                         </div>
 
-                        <label className="flex w-full cursor-pointer items-center justify-between rounded-lg bg-gray-900/50 p-3 border border-gray-800">
-                            <span className="text-gray-300">Use Game Wallet</span>
-                            <div className="relative"><input type="checkbox" className="peer sr-only" checked={useGameWallet} onChange={(e) => setUseGameWallet(e.target.checked)} /><div className="block h-6 w-10 rounded-full bg-gray-600 peer-checked:bg-red-600"></div><div className="dot absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-full"></div></div>
-                        </label>
+                        {/* Чекбокс перенесён в хедер */}
                         
                         <div className="grid grid-cols-2 gap-3">
                             <button onClick={() => navigate('send')} className="rounded-lg border border-gray-600 py-2 text-gray-300 transition hover:bg-gray-700 hover:text-white">Send</button>
@@ -381,13 +379,20 @@ export const GameWallet = () => {
 
     return (
         <>
-            <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="rounded-lg border border-red-800 bg-[#111] px-5 py-2.5 font-medium text-red-300 shadow-[0_0_15px_rgba(200,0,0,0.6),inset_0_0_4px_rgba(180,20,20,0.5)] transition-all duration-300 hover:bg-red-700 hover:text-white hover:border-red-600 hover:shadow-[0_0_20px_rgba(255,0,0,0.8),inset_0_0_6px_rgba(255,100,100,0.5)]"
-            >
-                Game Wallet
-            </button>
-            
+            <div className="flex items-center gap-3">
+                <button 
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="rounded-lg border border-red-800 bg-[#111] px-2 py-2 font-medium text-red-300 shadow-[0_0_15px_rgba(200,0,0,0.6),inset_0_0_4px_rgba(180,20,20,0.5)] transition-all duration-300 hover:bg-red-700 hover:text-white hover:border-red-600 hover:shadow-[0_0_20px_rgba(255,0,0,0.8),inset_0_0_6px_rgba(255,100,100,0.5)]"
+                >
+                    <span className="inline-flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 20 16" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 2.25c.38-1.01 1.87-1.01 2.25 0l.19.5a1.13 1.13 0 001.45.65l.5-.19c.97-.37 1.93.59 1.56 1.56l-.19.5a1.13 1.13 0 00.65 1.45l.5.19c1.01.38 1.01 1.87 0 2.25l-.5.19a1.13 1.13 0 00-.65 1.45l.19.5c.37.97-.59 1.93-1.56 1.56l-.5-.19a1.13 1.13 0 00-1.45.65l-.19.5c-.38 1.01-1.87 1.01-2.25 0l-.19-.5a1.13 1.13 0 00-1.45-.65l-.5.19c-.97.37-1.93-.59-1.56-1.56l.19-.5a1.13 1.13 0 00-.65-1.45l-.5-.19c-1.01-.38-1.01-1.87 0-2.25l.5-.19a1.13 1.13 0 00.65-1.45l-.19-.5c-.37-.97.59-1.93 1.56-1.56l.5.19a1.13 1.13 0 001.45-.65l.19-.5z" />
+                            <circle cx="12.5" cy="8" r="2" stroke="currentColor" strokeWidth="2" />
+                        </svg>
+                        Game Wallet
+                    </span>
+                </button>
+            </div>
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
                     <div className="relative w-[400px] max-w-[90vw] rounded-xl border border-red-800/70 bg-[#0A0A0A] p-6 shadow-[0_0_30px_rgba(200,0,0,0.5),inset_0_0_10px_rgba(100,0,0,0.5)]">

@@ -5,8 +5,11 @@ import { FaXTwitter } from "react-icons/fa6";
 import { FaGithub } from "react-icons/fa";
 import { SiGitbook } from "react-icons/si";
 import Link from "next/link";
+import { GrumpyWombatCheckbox } from "./GrumpyWombatCheckbox";
+import { useGameWalletContext } from "./GameWalletContext";
 
 export default function Header() {
+  const { useGameWallet, setUseGameWallet } = useGameWalletContext();
   return (
     <header className="w-full bg-gradient-to-r from-red-900 via-black to-red-900 shadow-2xl border-b-4 border-red-900 relative overflow-hidden">
       {/* Грязные кровавые потеки */}
@@ -83,18 +86,21 @@ export default function Header() {
         </div>
 
         {/* Правая часть - кнопки с эффектом ржавых гвоздей */}
-        <div className="ml-auto flex items-center space-x-4">
+        <div className="ml-auto flex items-center gap-2">
+          <div style={{ transform: 'scale(0.85)', marginRight: '-0.5rem' }}>
+            <GrumpyWombatCheckbox checked={useGameWallet} onChange={e => setUseGameWallet(e.target.checked)} />
+          </div>
           <Link
             href="/liquidity"
             className="px-5 py-2.5 rounded-md bg-black border-2 border-red-800 text-red-500 hover:bg-red-900/80 hover:border-red-500 hover:text-red-300 transition-all duration-300 shadow-lg hover:shadow-red-700/70 relative group"
+            style={{ minWidth: 120 }}
           >
             <span className="relative z-10">LIQUIDITY</span>
             {/* Эффект ржавых пятен */}
             <div className="absolute top-1 right-1 w-2 h-2 bg-red-900 rounded-full opacity-70 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div className="absolute bottom-1 left-2 w-3 h-1 bg-red-900 opacity-50 group-hover:opacity-80 transition-opacity duration-500"></div>
           </Link>
-          
-          <div className="connect-wallet-wrapper">
+          <div className="connect-wallet-wrapper" style={{ minWidth: 180 }}>
             <ConnectButton />
           </div>
         </div>
