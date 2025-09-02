@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { ethers, Wallet, HDNodeWallet, Contract } from 'ethers';
 import { useGameWalletContext } from '@/components/GameWalletContext';
-import { GrumpyWombatCheckbox } from './GrumpyWombatCheckbox';
 import { chains, pocAbi } from '@/constants';
 
 const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
@@ -382,14 +381,14 @@ export const GameWallet = () => {
             <div className="flex items-center gap-3">
                 <button 
                     onClick={() => setIsOpen(!isOpen)}
-                    className="rounded-lg border border-red-800 bg-[#111] px-2 py-2 font-medium text-red-300 shadow-[0_0_15px_rgba(200,0,0,0.6),inset_0_0_4px_rgba(180,20,20,0.5)] transition-all duration-300 hover:bg-red-700 hover:text-white hover:border-red-600 hover:shadow-[0_0_20px_rgba(255,0,0,0.8),inset_0_0_6px_rgba(255,100,100,0.5)]"
+                    className="rounded-lg border border-red-800 bg-[#111] px-2 py-2 font-medium text-red-300 shadow-[0_0_15px_rgba(200,0,0,0.6),inset_0_0_4px_rgba(180,20,20,0.5)] transition-all duration-300 hover:bg-red-700 hover:text-white hover:border-red-600 hover:shadow-[0_0_20px_rgba(255,0,0,0.8),inset_0_0_6px_rgba(255,100,100,0.5)] flex items-center justify-center"
                 >
-                    <span className="inline-flex items-center gap-2">
+                    <span className="inline-flex items-center gap-2 justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 20 16" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 2.25c.38-1.01 1.87-1.01 2.25 0l.19.5a1.13 1.13 0 001.45.65l.5-.19c.97-.37 1.93.59 1.56 1.56l-.19.5a1.13 1.13 0 00.65 1.45l.5.19c1.01.38 1.01 1.87 0 2.25l-.5.19a1.13 1.13 0 00-.65 1.45l.19.5c.37.97-.59 1.93-1.56 1.56l-.5-.19a1.13 1.13 0 00-1.45.65l-.19.5c-.38 1.01-1.87 1.01-2.25 0l-.19-.5a1.13 1.13 0 00-1.45-.65l-.5.19c-.97.37-1.93-.59-1.56-1.56l.19-.5a1.13 1.13 0 00-.65-1.45l-.5-.19c-1.01-.38-1.01-1.87 0-2.25l.5-.19a1.13 1.13 0 00.65-1.45l-.19-.5c-.37-.97.59-1.93 1.56-1.56l.5.19a1.13 1.13 0 001.45-.65l.19-.5z" />
                             <circle cx="12.5" cy="8" r="2" stroke="currentColor" strokeWidth="2" />
                         </svg>
-                        Game Wallet
+                        <span className="leading-none flex items-center">Game Wallet</span>
                     </span>
                 </button>
             </div>

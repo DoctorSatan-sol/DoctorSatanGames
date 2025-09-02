@@ -1,0 +1,40 @@
+.fancy-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  cursor: pointer;
+  user-select: none;
+}
+.fancy-checkbox input[type="checkbox"] {
+  display: none;
+}
+.fancy-checkmark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(255,65,108,0.15), 0 0 0 2px #ff416c33;
+  background: linear-gradient(135deg, #232526 0%, #ff416c 100%);
+  transition: box-shadow 0.2s, background 0.2s;
+}
+.fancy-checkbox input[type="checkbox"]:checked + .fancy-checkmark {
+  box-shadow: 0 0 0 3px #ff4b2b66, 0 2px 8px rgba(255,75,43,0.18);
+  background: linear-gradient(135deg, #ff4b2b 0%, #ff416c 100%);
+}
+.checkmark-svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+.fancy-label {
+  font-size: 0.95em;
+  color: #ff416c;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.fancy-checkbox:hover .fancy-label {
+  color: #ff4b2b;
+}

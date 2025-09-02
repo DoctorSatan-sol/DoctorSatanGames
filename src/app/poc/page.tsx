@@ -642,7 +642,7 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 						</div>
 					</div>
 										<div className="w-half max-w-4xl mb-8">
-												<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-2 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
+												<div className="bg-black/60 border-2 mt-1.5 border-yellow-700 rounded-xl p-2 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
 														<h3 className="text-yellow-300 text-lg font-bold mb-1 text-center">Referral System</h3>
 														<div className="flex flex-col md:flex-row gap-2 items-center justify-center">
 																<input
@@ -657,12 +657,12 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 																/>
 														</div>
 														<button
-															className="px-4 py-1.5 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 disabled:opacity-60"
+															className="px-4 py-1.5 mt-1 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 disabled:opacity-60"
 															disabled={refLoading || !refInput}
 															onClick={handleApplyReferral}
 														>{refLoading ? 'Applying...' : 'Apply'}</button>
 														<button
-															className="px-4 py-1.5 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 disabled:opacity-60"
+															className="px-4 py-1.5 mt-1 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 disabled:opacity-60"
 															disabled={refLoading || !refInput}
 															onClick={handleCreateReferral}
 														>{refLoading ? 'Creating...' : 'Create'}</button>
@@ -682,14 +682,14 @@ useEffect(() => { if (vrfFeeData) setVrfFee(BigInt(vrfFeeData.toString())); }, [
 				{/* Proof Of Click */}
 					<div className="bg-black/60 border-1 border-red-700 rounded-xl p-8 w-full md:basis-2/5 md:max-w-[40%] shadow-lg flex flex-col justify-start order-1">
 						<div className="basis-[10%] min-w-[180px] flex-shrink-0 flex flex-col items-center">
-						<div className="flex items-center justify-center rounded-lg border-2 border-red-800 bg-black/1 p-1">
+						<div className="flex items-center justify-center rounded-lg  bg-black/1 p-1">
 							<span
 								className="text-5xl font-bold select-none"
 								style={{    
 									fontFamily: "'Creepster', cursive, sans-serif",
-									textShadow: '3px 3px 0 rgba(110, 100, 5, 1), 6px 6px 0 rgba(34, 33, 0, 1)',
+									textShadow: '3px 3px 0 rgba(131, 30, 4, 1), 6px 6px 0 rgba(22, 22, 20, 1)',
 									letterSpacing: '12px',
-									color: '#ef4444',
+									color: '#f01b1bff',
 								}}
 							>
 								Click to hell

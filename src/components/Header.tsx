@@ -5,8 +5,8 @@ import { FaXTwitter } from "react-icons/fa6";
 import { FaGithub } from "react-icons/fa";
 import { SiGitbook } from "react-icons/si";
 import Link from "next/link";
-import { GrumpyWombatCheckbox } from "./GrumpyWombatCheckbox";
 import { useGameWalletContext } from "./GameWalletContext";
+import { FancyCheckbox } from "./FancyCheckbox";
 
 export default function Header() {
   const { useGameWallet, setUseGameWallet } = useGameWalletContext();
@@ -87,8 +87,12 @@ export default function Header() {
 
         {/* Правая часть - кнопки с эффектом ржавых гвоздей */}
         <div className="ml-auto flex items-center gap-2">
-          <div style={{ transform: 'scale(0.85)', marginRight: '-0.5rem' }}>
-            <GrumpyWombatCheckbox checked={useGameWallet} onChange={e => setUseGameWallet(e.target.checked)} />
+          <div style={{ transform: 'scale(0.95)', marginRight: '0.5rem' }}>
+            <FancyCheckbox
+              checked={useGameWallet}
+              onChange={e => setUseGameWallet(e.target.checked)}
+              label="Use Game Wallet"
+            />
           </div>
           <Link
             href="/liquidity"
