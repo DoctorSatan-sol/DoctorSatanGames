@@ -7,11 +7,26 @@ import "@paintswap/vrf/contracts/interfaces/IPaintswapVRFCoordinator.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface ILiquidityVault {
+        struct userInfo {
+            uint256 totalReferrals;
+            bytes32 referralCode;
+            address referrer;
+        }
+
     function payout(address _winner, uint256 _amount) external;
     function getLiquidity() external view returns (uint256);
     function increaseReserve(uint256 _amount) external;
     function decreaseReserve(uint256 _amount) external;
     function getReservedForBets() external view returns (uint256);
+
+    function user(address _userAddress) 
+        external 
+        view 
+        returns (
+            uint256 totalReferrals, 
+            bytes32 referralCode, 
+            address referrer
+        );
 }
 
 error InvalidBulletCount();
@@ -49,9 +64,6 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
     }
 
     mapping(uint256 => Bet) public bets;
-    mapping(bytes32 => address) public referralCodeOwner;
-    mapping(address => bytes32) public referralCodeOf;
-    mapping(address => address) public referrerOf;
     mapping(address => Player) public playerInfo;
 
     uint256 public houseFeeBps = 500; // 5%
@@ -91,7 +103,7 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
             revert PayoutExceedsLimit();
         }
 
-        address referrer = referrerOf[msg.sender];
+        ( , , address referrer) = liquidityVault.user(msg.sender);
         uint256 referralFee;
         uint256 cashback;
         if (referrer != address(0)) {
@@ -169,45 +181,6 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
             revert NewBPSExceedsMaxLimit();
         }
         maxPayoutBps = _newBps;
-    }
-
-    function createReferralCode(bytes32 _code) public {
-        if (referralCodeOf[msg.sender] != bytes32(0)) {
-            revert UserAlreadyHasCode();
-        }
-        if (referralCodeOwner[_code] != address(0)) {
-            revert ReferralCodeAlreadyExists();
-        }
-
-        referralCodeOwner[_code] = msg.sender;
-        referralCodeOf[msg.sender] = _code;
-    }
-
-    function applyReferralCode(bytes32 _code) public {
-        address referrerAddress = referralCodeOwner[_code];
-
-        if (referrerAddress == msg.sender) {
-            revert CannotBeOwnReferrer();
-        }
-        if (referrerAddress == address(0)) {
-            revert ReferralCodeNotFound();
-        }
-        if (referrerOf[msg.sender] != address(0)) {
-            revert ReferrerAlreadySet();
-        }
-        
-        referrerOf[msg.sender] = referrerAddress;
-        playerInfo[referrerAddress].totalReferrals += 1;
-    }
-
-    function getReferralCodeOf(address _user) public view returns(bytes32) {
-        return referralCodeOf[_user];
-    }
-    function getAddressByCode(bytes32 _code) public view returns(address) {
-        return referralCodeOwner[_code];
-    }
-    function getReferrerOf(address _user) public view returns(address) {
-        return referrerOf[_user];
     }
 
     /// @dev Register my contract on Sonic FeeM

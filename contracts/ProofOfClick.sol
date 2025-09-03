@@ -6,6 +6,27 @@ import "@paintswap/vrf/contracts/PaintswapVRFConsumer.sol";
 import "@paintswap/vrf/contracts/interfaces/IPaintswapVRFCoordinator.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+interface IFeeManager {
+    function claim() external;
+}
+
+interface IReferralSystem {
+    struct userInfo {
+        uint256 totalReferrals;
+        bytes32 referralCode;
+        address referrer;
+    }
+
+    function user(address _userAddress) 
+        external 
+        view 
+        returns (
+            uint256 totalReferrals, 
+            bytes32 referralCode, 
+            address referrer
+        );
+}
+
 contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
     error FeeTooLow();
     error FeeTransferFailed();
@@ -13,11 +34,6 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
     error InsufficientContractBalance();
     error NothingToBurn();
     error TransferFailed();
-    error ReferralCodeAlreadyExists();
-    error ReferrerAlreadySet();
-    error ReferralCodeNotFound();
-    error CannotBeOwnReferrer();
-    error UserAlreadyHasCode();
     error InvalidBatchSize();
     error MaxBatchSizeExceeded();
     error BatchSizeMustBePositive();
@@ -30,12 +46,12 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
     uint256 public lastRoundTs;
     address public liquidityVault;
     uint256 public totalClicks;
+    IFeeManager public feeManager;
+    IReferralSystem public referralSystem;
 
     uint256 public constant INITIAL_REWARD          = 666 * 1e18;
     uint256 public constant HALVING_INTERVAL_ROUNDS = 50050;
     uint256 public constant ROUND_DURATION          = 60;
-    uint256 public constant FEE                     = 0.01 ether;
-    uint256 public constant LIQUIDITY_SHARE         = 5;
     uint32  public constant CALLBACK_GAS_LIMIT      = 200_000;
 
     mapping(uint256 => mapping(uint256 => address)) public players;
@@ -44,17 +60,13 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
     mapping(uint256 => uint256) private rewardPerRound;
     mapping(address => uint256) public totalUserClicks;
     mapping(address => uint256) public totalUserWins;
-    mapping(address => uint256) public totalUserReferrals;
-    mapping(bytes32 => address) public referralCodeOwner;
-    mapping(address => bytes32) public referralCodeOf;
-    mapping(address => address) public referrerOf;
 
     event Clicked(uint256 indexed roundId, address indexed player);
     event RoundRequested(uint256 indexed requestId, uint256 indexed roundId, uint256 playersCount, uint256 reward);
     event WinnerMinted(uint256 indexed requestId, uint256 indexed roundId, address indexed winner, uint256 amount);
     event Burned(address indexed burner, uint256 amount, uint256 ethOut);
 
-    constructor(address vrfCoordinatorAddress, address _vaultAddress)
+    constructor(address vrfCoordinatorAddress, address _vaultAddress, address FeeManager)
         ERC20("Clicks Token", "C")
         PaintswapVRFConsumer(vrfCoordinatorAddress)
     {
@@ -64,13 +76,15 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
         lastRoundTs = block.timestamp;
         roundId = 0;
         lastHalvingRound = 0;
+        feeManager = IFeeManager(FeeManager);
+        referralSystem = IReferralSystem(liquidityVault);
     }
 
     function _performClickLogic(address clicker) internal returns (uint256) {
         bool timeIsUp = (block.timestamp >= lastRoundTs + ROUND_DURATION);
         bool hasPlayers = (playerCount[roundId] > 0);
         uint256 vrfFee = 0;
-        uint256 actualCost = FEE;
+        uint256 actualCost = 0;
 
         if (timeIsUp && hasPlayers) {
             vrfFee = IPaintswapVRFCoordinator(_vrfCoordinator).calculateRequestPriceNative(CALLBACK_GAS_LIMIT);
@@ -96,16 +110,13 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
                 lastHalvingRound = roundId;
             }
 
+            if (roundId % 60 == 0) {feeManager.claim();}
+
             roundId += 1;
             lastRoundTs = block.timestamp;
         }
 
-        address referrer = referrerOf[clicker];
-        uint256 cashback = 0;
-        if (referrer != address(0)) {
-            cashback = (FEE * 5) / 10000;
-        }
-        uint256 liquidityAmount = (FEE * LIQUIDITY_SHARE) / 100;
+        ( , , address referrer) = referralSystem.user(clicker);
 
         uint256 idx = playerCount[roundId];
         players[roundId][idx] = clicker;
@@ -120,14 +131,6 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
             idx = playerCount[roundId];
             players[roundId][idx] = referrer;
             playerCount[roundId] = idx + 1;
-        }
-
-        (bool ok, ) = payable(liquidityVault).call{value: liquidityAmount}("");
-        if (!ok) revert FeeTransferFailed();
-
-        if (cashback > 0) {
-            (ok, ) = payable(clicker).call{value: cashback}("");
-            if (!ok) revert FeeTransferFailed();
         }
 
         return actualCost;
@@ -217,44 +220,7 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
         return lastHalvingRound + HALVING_INTERVAL_ROUNDS;
     }
 
-    function createReferralCode(bytes32 _code) public {
-        if (referralCodeOf[msg.sender] != bytes32(0)) {
-            revert UserAlreadyHasCode();
-        }
-        if (referralCodeOwner[_code] != address(0)) {
-            revert ReferralCodeAlreadyExists();
-        }
-
-        referralCodeOwner[_code] = msg.sender;
-        referralCodeOf[msg.sender] = _code;
-    }
-
-    function applyReferralCode(bytes32 _code) public {
-        address referrerAddress = referralCodeOwner[_code];
-
-        if (referrerAddress == msg.sender) {
-            revert CannotBeOwnReferrer();
-        }
-        if (referrerAddress == address(0)) {
-            revert ReferralCodeNotFound();
-        }
-        if (referrerOf[msg.sender] != address(0)) {
-            revert ReferrerAlreadySet();
-        }
-        
-        referrerOf[msg.sender] = referrerAddress;
-        totalUserReferrals[referrerAddress] += 1;
-    }
-
-    function getReferralCodeOf(address _user) public view returns(bytes32) {
-        return referralCodeOf[_user];
-    }
-    function getAddressByCode(bytes32 _code) public view returns(address) {
-        return referralCodeOwner[_code];
-    }
-    function getReferrerOf(address _user) public view returns(address) {
-        return referrerOf[_user];
-    }
+    receive() external payable {}
 
     /// @dev Register my contract on Sonic FeeM
     function registerMe() external {

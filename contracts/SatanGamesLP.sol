@@ -9,6 +9,11 @@ error ZeroShares();
 error InsufficientAssetsForShares();
 error EthTransferFailed();
 error NotEnoughBalanceForPayout();
+error ReferralCodeAlreadyExists();
+error ReferrerAlreadySet();
+error ReferralCodeNotFound();
+error CannotBeOwnReferrer();
+error UserAlreadyHasCode();
 
 contract SatanGamesLP is ERC20, AccessControl{
 
@@ -16,8 +21,16 @@ contract SatanGamesLP is ERC20, AccessControl{
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
+    struct userInfo {
+        uint256 totalReferrals;
+        bytes32 referralCode;
+        address referrer;
+    }
+
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     uint256 public reservedForBets;
+    mapping(bytes32 => address) public referralCodeOwner;
+    mapping(address => userInfo) public user;
 
     function addOwner(address newOwnerContract) public onlyRole(DEFAULT_ADMIN_ROLE) {
         grantRole(OWNER_ROLE, newOwnerContract);
@@ -72,23 +85,6 @@ contract SatanGamesLP is ERC20, AccessControl{
         }
     }
 
-    function mint(address to, uint256 amount) internal {
-        _mint(to, amount);
-    }
-
-    function burn(address from, uint256 amount) internal {
-        _burn(from, amount);
-    }
-
-    function getBalance(address _user) public view returns(uint256 balance) {
-        uint256 userLpBalance = balanceOf(_user);
-        return userLpBalance;
-    }
-
-    function getLiquidity() external view returns (uint256) {
-        return address(this).balance;
-    }
-
     function getReservedForBets() external view returns (uint256) {
         return reservedForBets;
     }
@@ -114,6 +110,35 @@ contract SatanGamesLP is ERC20, AccessControl{
             revert("Cannot decrease more than reserved");
         }
         reservedForBets -= _amount;
+    }
+
+    function createReferralCode(bytes32 _code) public {
+        if (user[msg.sender].referralCode != bytes32(0)) {
+            revert UserAlreadyHasCode();
+        }
+        if (referralCodeOwner[_code] != address(0)) {
+            revert ReferralCodeAlreadyExists();
+        }
+
+        referralCodeOwner[_code] = msg.sender;
+        user[msg.sender].referralCode = _code;
+    }
+
+    function applyReferralCode(bytes32 _code) public {
+        address referrerAddress = referralCodeOwner[_code];
+
+        if (referrerAddress == msg.sender) {
+            revert CannotBeOwnReferrer();
+        }
+        if (referrerAddress == address(0)) {
+            revert ReferralCodeNotFound();
+        }
+        if (user[msg.sender].referrer != address(0)) {
+            revert ReferrerAlreadySet();
+        }
+        
+        user[msg.sender].referrer = referrerAddress;
+        user[msg.sender].totalReferrals += 1;
     }
 
     /// @dev Register my contract on Sonic FeeM
