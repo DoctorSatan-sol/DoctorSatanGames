@@ -10,10 +10,10 @@ interface ContractsConfig {
 
 export const chains: ContractsConfig = {
     146: {
-        pool: "0x6394259CBAdf5c6DB423cf14A11a27c84de352ED",
+        pool: "0x05DE507e60511CFD65fa5686a879d9BDBe43B2a1",
         chainlink: "0xc76dFb89fF298145b417d221B2c747d84952e01d",
-        roulette: "0x00D48E5a72E2AD946A2393aa0921E89d37e940d2",
-		poc:"0x763A86406c0e1B0A501b3b6c1A1876179a0Dd2E6",
+        roulette: "0x0e2E3ce2e08c2f2AD9107eC7EEb0c786202F5607",
+		poc:"0xb2811Caf4919A260b99c800E3ba640FB6F1c6158",
         no_check: null,
     }
 }

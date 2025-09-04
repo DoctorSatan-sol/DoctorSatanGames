@@ -19,6 +19,8 @@ interface ILiquidityVault {
     function decreaseReserve(uint256 _amount) external;
     function getReservedForBets() external view returns (uint256);
 
+    function gameWallet(address _userAddress) external view returns (address _ownerWallet);
+
     function user(address _userAddress) 
         external 
         view 
@@ -103,7 +105,11 @@ contract RussianRoulette is PaintswapVRFConsumer, Ownable, ReentrancyGuard {
             revert PayoutExceedsLimit();
         }
 
-        ( , , address referrer) = liquidityVault.user(msg.sender);
+        address ownerAddress = liquidityVault.gameWallet(msg.sender);
+        if (ownerAddress == address(0)) {
+            ownerAddress = msg.sender;
+        }
+        ( , , address referrer) = liquidityVault.user(ownerAddress);
         uint256 referralFee;
         uint256 cashback;
         if (referrer != address(0)) {

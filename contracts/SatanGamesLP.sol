@@ -14,6 +14,7 @@ error ReferrerAlreadySet();
 error ReferralCodeNotFound();
 error CannotBeOwnReferrer();
 error UserAlreadyHasCode();
+error InsufficientReserve();
 
 contract SatanGamesLP is ERC20, AccessControl{
 
@@ -29,8 +30,10 @@ contract SatanGamesLP is ERC20, AccessControl{
 
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     uint256 public reservedForBets;
+    mapping(address => address) public gameWallet;
     mapping(bytes32 => address) public referralCodeOwner;
     mapping(address => userInfo) public user;
+    
 
     function addOwner(address newOwnerContract) public onlyRole(DEFAULT_ADMIN_ROLE) {
         grantRole(OWNER_ROLE, newOwnerContract);
@@ -107,7 +110,7 @@ contract SatanGamesLP is ERC20, AccessControl{
 
     function decreaseReserve(uint256 _amount) external onlyRole(OWNER_ROLE) {
         if (_amount > reservedForBets) {
-            revert("Cannot decrease more than reserved");
+            revert InsufficientReserve();
         }
         reservedForBets -= _amount;
     }
@@ -138,7 +141,7 @@ contract SatanGamesLP is ERC20, AccessControl{
         }
         
         user[msg.sender].referrer = referrerAddress;
-        user[msg.sender].totalReferrals += 1;
+        user[referrerAddress].totalReferrals += 1;
     }
 
     /// @dev Register my contract on Sonic FeeM

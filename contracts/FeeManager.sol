@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.17;
 
 interface IFEEM {
     function newRewardClaim(uint256 projectId) external;
@@ -35,11 +35,13 @@ contract FeeManager{
     }
 
     function _distribute() internal {
-        uint256 houseFee = (address(this).balance * houseFeeBps) / 10000;
-        (bool success, ) = poc.call{value: address(this).balance - houseFee}("");
-        if (!success){revert TransferFailed();}
-        (bool success2, ) = liquidityPool.call{value: houseFee}("");
-        if (!success2){revert TransferFailed();}
+        if (address(this).balance != 0){
+            uint256 houseFee = (address(this).balance * houseFeeBps) / 10000;
+            (bool success, ) = poc.call{value: address(this).balance - houseFee}("");
+            if (!success){revert TransferFailed();}
+            (bool success2, ) = liquidityPool.call{value: houseFee}("");
+            if (!success2){revert TransferFailed();}
+        }
     }
 
     function changeFeemOwner(address _newOwner) external onlyOwner{

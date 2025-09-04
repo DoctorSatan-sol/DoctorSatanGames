@@ -17,6 +17,8 @@ interface IReferralSystem {
         address referrer;
     }
 
+    function gameWallet(address _userAddress) external view returns (address _ownerWallet);
+
     function user(address _userAddress) 
         external 
         view 
@@ -80,7 +82,7 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
         referralSystem = IReferralSystem(liquidityVault);
     }
 
-    function _performClickLogic(address clicker) internal returns (uint256) {
+    function _performClickLogic(address clicker, address referrer) internal returns (uint256) {
         bool timeIsUp = (block.timestamp >= lastRoundTs + ROUND_DURATION);
         bool hasPlayers = (playerCount[roundId] > 0);
         uint256 vrfFee = 0;
@@ -116,11 +118,7 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
             lastRoundTs = block.timestamp;
         }
 
-        ( , , address referrer) = referralSystem.user(clicker);
-
-        uint256 idx = playerCount[roundId];
-        players[roundId][idx] = clicker;
-        playerCount[roundId] = idx + 1;
+        players[roundId][playerCount[roundId]++] = clicker;
 
         totalClicks += 1;
         totalUserClicks[clicker] += 1;
@@ -128,16 +126,20 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
         emit Clicked(roundId, clicker);
 
         if (referrer != address(0) && (totalUserClicks[clicker] % 100 == 0)) {
-            idx = playerCount[roundId];
-            players[roundId][idx] = referrer;
-            playerCount[roundId] = idx + 1;
+            players[roundId][playerCount[roundId]++] = referrer;
         }
 
         return actualCost;
     }
 
     function _click() public payable nonReentrant {
-        uint256 actualCost = _performClickLogic(msg.sender);
+        address ownerAddress = referralSystem.gameWallet(msg.sender);
+        if (ownerAddress == address(0)) {
+            ownerAddress = msg.sender;
+        }
+        ( , , address referrer) = referralSystem.user(ownerAddress);
+
+        uint256 actualCost = _performClickLogic(msg.sender, referrer);
 
         if (msg.value < actualCost) revert FeeTooLow();
 
@@ -152,11 +154,17 @@ contract POC is PaintswapVRFConsumer, ERC20, ReentrancyGuard {
         if (n == 0) revert BatchSizeMustBePositive();
         if (n > 500) revert MaxBatchSizeExceeded();
 
+        address ownerAddress = referralSystem.gameWallet(msg.sender);
+        if (ownerAddress == address(0)) {
+            ownerAddress = msg.sender;
+        }
+        ( , , address referrer) = referralSystem.user(ownerAddress);
+
         uint256 totalCost = 0;
         
         unchecked {
             for (uint256 i = 0; i < n; i++) {
-                totalCost += _performClickLogic(msg.sender);
+                totalCost += _performClickLogic(msg.sender, referrer);
             }
         }
         
