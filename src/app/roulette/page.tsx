@@ -16,25 +16,47 @@ import 'rc-slider/assets/index.css'; // Обязательно должен бы
 function decodeContractError(error: any, abi: any[]): string {
     let message = "Transaction failed for an unknown reason.";
     if (typeof error !== 'object' || error === null) return message;
+    let code = '';
     if (error.data) {
         try {
             const iface = new ethers.Interface(abi);
             const decodedError = iface.parseError(error.data);
-            if (decodedError) return decodedError.name;
+            if (decodedError) code = decodedError.name;
         } catch (e) {}
     }
-    if (error.reason) return error.reason;
+    if (error.reason) code = error.reason;
     if (error.message) {
         if (error.message.includes('User denied transaction signature')) return 'Transaction rejected by user.';
         const match = error.message.match(/Error:\s*([A-Za-z0-9_]+)\(/);
-        if (match && match[1]) return match[1];
+        if (match && match[1]) code = match[1];
         message = error.message;
     }
-    if (error.shortMessage) return error.shortMessage;
+    if (error.shortMessage) code = error.shortMessage;
+    // Custom error translation
+    switch (code) {
+        case 'InvalidBulletCount': return 'Invalid bullet count.';
+        case 'InsufficientPayment': return 'Insufficient payment.';
+        case 'BetNotFound': return 'Bet not found.';
+        case 'PayoutExceedsLimit': return 'Payout exceeds limit.';
+        case 'ReferralCodeAlreadyExists': return 'Referral code already exists.';
+        case 'ReferrerAlreadySet': return 'Referrer already set.';
+        case 'ReferralCodeNotFound': return 'Referral code not found.';
+        case 'CannotBeOwnReferrer': return 'Cannot be own referrer.';
+        case 'UserAlreadyHasCode': return 'User already has code.';
+        case 'EtherTransferFailed': return 'Ether transfer failed.';
+        case 'FeeTooHigh': return 'Fee too high.';
+        case 'NewBPSExceedsMaxLimit': return 'New BPS exceeds max limit.';
+        case 'FailedToTransferStake': return 'Failed to transfer stake.';
+        case 'BetTooSmall': return 'Bet too small.';
+        default: break;
+    }
+    if (code) return code;
     return message;
 }
 
 export default function RussianRoulette() {
+    // ...existing code...
+    // Error bar at bottom
     const { useGameWallet } = useGameWalletContext();
 
     const chainId = useChainId();
@@ -171,8 +193,8 @@ export default function RussianRoulette() {
 
             const rouletteContract = new ethers.Contract(rouletteAddress, rouletteAbi, gameWallet);
             const tx = await rouletteContract.bet(chargedBullets, { value: totalValue });
-            
-            console.log("Game Wallet transaction sent! Hash:", tx.hash);
+            // Выводим все данные транзакции в консоль
+            console.log("Game Wallet transaction:", tx);
             setWaitForResult(true);
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             timeoutRef.current = setTimeout(() => {
@@ -210,8 +232,12 @@ export default function RussianRoulette() {
                     abi: rouletteAbi, address: rouletteAddress, functionName: 'bet',
                     args: [chargedBullets], value: totalValue, account: account.address,
                 });
+                // Выводим все данные из симуляции в консоль
+                console.log("Simulation result:", simulation);
                 if (!simulation || !simulation.request) throw new Error('Simulation failed');
-                await writeContract(config, { ...simulation.request, value: totalValue });
+                const txResult = await writeContract(config, { ...simulation.request, value: totalValue });
+                // Выводим все данные из транзакции в консоль
+                console.log("Wallet transaction result:", txResult);
                 setWaitForResult(true);
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
                 timeoutRef.current = setTimeout(() => {
@@ -383,6 +409,20 @@ export default function RussianRoulette() {
  
     return (
         <div className="min-h-screen bg-gradient-to-b from-red-950 to-black flex flex-col items-center justify-start pt-4">
+            {/* Error bar at bottom */}
+            {errorMsg && (
+                <div className="fixed bottom-0 left-0 w-full z-50 flex flex-col items-center pointer-events-none">
+                    <div className="w-full max-w-xl mx-auto mb-2">
+                        <div className="bg-black/80 border-2 border-red-800 rounded-xl shadow-lg p-2 flex flex-col gap-1">
+                            <div className="flex items-center gap-2 text-sm font-mono text-red-400">
+                                <span>Error:</span>
+                                <span>{errorMsg}</span>
+                                <span className="text-gray-500 ml-auto">{new Date().toLocaleTimeString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="w-full mb-8">
                 <div className="bg-black/70 border-2 border-red-800 rounded-xl p-2 shadow-lg w-full">
                     <h2 className="text-lg font-bold text-red-200 mb-2 text-center">Live</h2>

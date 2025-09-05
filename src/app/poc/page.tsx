@@ -69,6 +69,8 @@ export default function ProofOfClickUI() {
 
 	// For totalUserClicks, totalUserReferrals, totalUserWins you need the user address, can be added later via useAccount
 	// ...existing code...
+	// История событий (ошибки и транзакции)
+	const [eventHistory, setEventHistory] = useState<{ type: 'error', message: string, time: number }[]>([]);
 	const [showDetails, setShowDetails] = React.useState(false);
 	const chainId = useChainId();
 	const config = useConfig();
@@ -125,20 +127,22 @@ const nativePriceUSD = answer ? Number(answer) / 1e8 : 0;
 				 txHash: log.transactionHash,
 			 };
 		 });
-		 setLiveFeed(prev => {
-			 // Merge new events with previous ones by txHash (uniqueness)
-			 const all = [...events.reverse(), ...prev];
-			 const unique = [];
-			 const seen = new Set();
-			 for (const e of all) {
-				 if (!seen.has(e.txHash)) {
-					 unique.push(e);
-					 seen.add(e.txHash);
+			 setLiveFeed(prev => {
+				 // Merge new events с предыдущими по txHash (уникальность)
+				 const all = [...events, ...prev];
+				 const unique = [];
+				 const seen = new Set();
+				 for (const e of all) {
+					 if (!seen.has(e.txHash)) {
+						 unique.push(e);
+						 seen.add(e.txHash);
+					 }
+					 if (unique.length >= 20) break;
 				 }
-				 if (unique.length >= 5) break;
-			 }
-			 return unique;
-		 });
+				 // Сортируем по roundId по убыванию (от нового к старому)
+				 unique.sort((a, b) => b.roundId - a.roundId);
+				 return unique.slice(0, 5);
+			 });
 	 } catch {}
  }
 
@@ -160,47 +164,50 @@ React.useEffect(() => {
 async function sendBatchClicks(n: number) {
 	if (!pocAddress || !config) return;
 	if (n <= 0) return;
-	const send = async (count: number) => {
-		try {
-			// Calculate the sum: count * 0.01 + vrfFee
-			const baseValue = ethers.parseEther('0.01');
-			const countBig = BigInt(count);
-			const totalValue = baseValue * countBig + (vrfFee ? BigInt(vrfFee) : BigInt(0));
-						if (useGameWallet) {
-								const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
-								if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-								const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
-								const wallet = new Wallet(sessionKey, provider);
-								const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
-								await contract.batchClick(count, { value: totalValue });
-								// After a successful transaction — recalculate nonce
-								if (window._gwNonceRef) {
-									const address = await wallet.getAddress();
-									window._gwNonceRef.value = await getInitialGameWalletNonce(provider, address);
-									window._gwNonceRef.address = address;
-								}
-						} else {
-				await writeContract(config, {
-					abi: pocAbi,
-					address: pocAddress,
-					functionName: 'batchClick',
-					args: [count],
-					value: totalValue,
-				});
+	try {
+		const totalValue = vrfFee ? BigInt(vrfFee) : BigInt(0);
+		if (useGameWallet) {
+			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
+			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
+			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+			const wallet = new Wallet(sessionKey, provider);
+			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
+			await contract.batchClick(n, { value: totalValue });
+			// After a successful transaction — recalculate nonce
+			if (window._gwNonceRef) {
+				const address = await wallet.getAddress();
+				window._gwNonceRef.value = await getInitialGameWalletNonce(provider, address);
+				window._gwNonceRef.address = address;
 			}
-			toast.success(`batchClick(${count}) sent`);
-		} catch (e) {
-			toast.error('batchClick failed');
+		} else {
+			await writeContract(config, {
+				abi: pocAbi,
+				address: pocAddress,
+				functionName: 'batchClick',
+				args: [n],
+				value: totalValue,
+			});
 		}
-		debouncedStatsUpdate();
-	};
-	// Send in batches of 500 at a time
-	let left = n;
-	while (left > 0) {
-		const toSend = Math.min(left, 500);
-		await send(toSend);
-		left -= toSend;
+		toast.success(`batchClick(${n}) sent`);
+	// Не добавлять успешные события
+	} catch (e: any) {
+		let msg = 'batchClick failed';
+		if (e?.message) {
+			if (e.message.includes('FeeTooLow')) msg = 'Not enough funds to pay the fee.';
+			else if (e.message.includes('FeeTransferFailed')) msg = 'Fee transfer failed.';
+			else if (e.message.includes('RefundFailed')) msg = 'Refund failed.';
+			else if (e.message.includes('InsufficientContractBalance')) msg = 'Insufficient contract balance.';
+			else if (e.message.includes('NothingToBurn')) msg = 'No tokens to burn.';
+			else if (e.message.includes('TransferFailed')) msg = 'Transfer failed.';
+			else if (e.message.includes('InvalidBatchSize')) msg = 'Invalid batch size.';
+			else if (e.message.includes('MaxBatchSizeExceeded')) msg = 'Max batch size exceeded.';
+			else if (e.message.includes('BatchSizeMustBePositive')) msg = 'Batch size must be positive.';
+			else if (e.message.includes('InsufficientValueForBatch')) msg = 'Insufficient value for batch.';
+		}
+		toast.error(msg);
+	setEventHistory([{ type: 'error', message: msg, time: Date.now() }]);
 	}
+	debouncedStatsUpdate();
 }
 
 // Debounce function for sending batchClick after a pause
@@ -233,22 +240,34 @@ function scheduleBatchClick() {
 												 if (block && block.timestamp) blockTimestamp = block.timestamp * 1000;
 											 }
 										 } catch {}
-										 setLiveFeed(prev => [
-											 {
+										 setLiveFeed(prev => {
+											 const newEvent = {
 												 winner: args.winner,
 												 roundId: Number(args.roundId),
 												 amount: Number(args.amount) / 1e18,
 												 time: blockTimestamp,
 												 txHash: log.transactionHash,
-											 },
-											 ...prev
-										 ].slice(0, 5));
+											 };
+											 // Добавляем новый и сортируем
+											 const all = [newEvent, ...prev];
+											 const unique = [];
+											 const seen = new Set();
+											 for (const e of all) {
+												 if (!seen.has(e.txHash)) {
+													 unique.push(e);
+													 seen.add(e.txHash);
+												 }
+												 if (unique.length >= 20) break;
+											 }
+											 unique.sort((a, b) => b.roundId - a.roundId);
+											 return unique.slice(0, 5);
+										 });
 									 })();
 		 }
 	 },
  });
 
- 
+
 const [gwUserClicks, setGwUserClicks] = useState<number|null>(null);
 const [gwUserWins, setGwUserWins] = useState<number|null>(null);
 const [userBalance, setUserBalance] = useState<number|null>(null);
@@ -287,11 +306,26 @@ async function handleBurn() {
 			});
 		}
 		toast.success('Tokens burned successfully!');
+	// Не добавлять успешные события
 		setShowBurnModal(false);
 		setBurnAmount('');
 		fetchStats();
-	} catch (e) {
-		toast.error('Burn failed');
+	} catch (e: any) {
+		let msg = 'Burn failed';
+		if (e?.message) {
+			if (e.message.includes('FeeTooLow')) msg = 'Not enough funds to pay the fee.';
+			else if (e.message.includes('FeeTransferFailed')) msg = 'Fee transfer failed.';
+			else if (e.message.includes('RefundFailed')) msg = 'Refund failed.';
+			else if (e.message.includes('InsufficientContractBalance')) msg = 'Insufficient contract balance.';
+			else if (e.message.includes('NothingToBurn')) msg = 'No tokens to burn.';
+			else if (e.message.includes('TransferFailed')) msg = 'Transfer failed.';
+			else if (e.message.includes('InvalidBatchSize')) msg = 'Invalid batch size.';
+			else if (e.message.includes('MaxBatchSizeExceeded')) msg = 'Max batch size exceeded.';
+			else if (e.message.includes('BatchSizeMustBePositive')) msg = 'Batch size must be positive.';
+			else if (e.message.includes('InsufficientValueForBatch')) msg = 'Insufficient value for batch.';
+		}
+		toast.error(msg);
+	setEventHistory([{ type: 'error', message: msg, time: Date.now() }]);
 	} finally {
 		setBurnLoading(false);
 	}
@@ -328,6 +362,8 @@ if (nativeBalance) {
 		tvlUSD = (contractNative * nativePriceUSD).toLocaleString(undefined, { maximumFractionDigits: 2 });
 	}
 }
+// Для расчета expectedS используем contractNative
+const contractNativeRaw = nativeBalance ? Number(nativeBalance.value) / 1e18 : 0;
 if (nativeBalance && totalSupply && Number(totalSupply) > 0) {
 	const contractNative = Number(nativeBalance.value) / 1e18;
 	const supply = Number(totalSupply) / 1e18;
@@ -391,6 +427,20 @@ const { data: nextHalvingRound } = useReadContract({ abi: pocAbi, address: pocAd
 
 	return (
 		<div key={refreshTrigger} className="min-h-screen bg-gradient-to-b from-red-950 to-black flex flex-col items-center justify-start pt-4">
+			{/* История событий: ошибки и транзакции */}
+			<div className="fixed bottom-0 left-0 w-full z-50 flex flex-col items-center pointer-events-none">
+				<div className="w-full max-w-xl mx-auto mb-2">
+					{eventHistory.length > 0 && (
+						<div className="bg-black/80 border-2 border-red-800 rounded-xl shadow-lg p-2 flex flex-col gap-1">
+							<div className="flex items-center gap-2 text-sm font-mono text-red-400">
+								<span>Error:</span>
+								<span>{eventHistory[0].message}</span>
+								<span className="text-gray-500 ml-auto">{new Date(eventHistory[0].time).toLocaleTimeString()}</span>
+							</div>
+						</div>
+					)}
+				</div>
+			</div>
 			{/* Game Wallet toggle */}
 			<div className="flex flex-col md:flex-row gap-5 w-full justify-center items-stretch">
 				{/* Live Feed — 1/5 of the screen */}
@@ -471,7 +521,14 @@ const { data: nextHalvingRound } = useReadContract({ abi: pocAbi, address: pocAd
 					onChange={e => setBurnAmount(e.target.value)}
 					disabled={burnLoading}
 				/>
-				<div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
+																	<div className="mt-2 text-sm text-yellow-300 font-mono">
+																		Expected S: {
+																			burnAmount && contractNativeRaw > 0 && totalSupply && Number(totalSupply) > 0
+																				? ((parseFloat(burnAmount) * contractNativeRaw) / (Number(totalSupply) / 1e18)).toFixed(3)
+																				: '0.000'
+																		}
+																	</div>
+				<div className="absolute right-2 top-1/3 -translate-y-1/2 flex gap-2">
 								<button
 									className="px-2 py-1 text-sm bg-red-900/50 hover:bg-red-800 text-red-200 rounded shadow border border-red-700 font-bold transition-all duration-150 disabled:opacity-60"
 									disabled={burnLoading || !(useGameWallet ? gwBalance : userBalance)}
@@ -509,22 +566,22 @@ const { data: nextHalvingRound } = useReadContract({ abi: pocAbi, address: pocAd
 		</div>
 	</div>
 )}
-						<h2 className="text-lg font-bold text-red-200 mb-0 text-center">My Statistics</h2>
-						<div className="text-xs text-yellow-400 mb-1">Wallet</div>
-						
-						<div className="text-gray-300 mb-1 flex justify-between"><span>Clicks:</span> <span className="font-mono">{userClicks !== undefined ? Number(userClicks).toLocaleString() : '...'}</span></div>
+						<h2 className="text-lg font-bold text-red-200 mb-4 text-center">My Statistics</h2>
 
-						<div className="text-gray-300 mb-1 flex justify-between"><span>Blocks Won:</span> <span className="font-mono">{userWins !== undefined ? Number(userWins).toLocaleString() : '...'}</span></div>
-						 <div className="text-gray-300 mb-1 flex justify-between text-green-400"><span>Balance:</span> <span className="font-mono text-green-400">{userBalance ? (Number(userBalance) / 1e18).toLocaleString() : '...'}C</span></div>
-						 <div className="mt-2 border-t border-gray-700 pt-2">
-							
-							<div className="text-xs text-yellow-400 mb-1">Game Wallet</div>
-							
-							<div className="text-gray-300 mb-1 flex justify-between"><span>Clicks:</span> <span className="font-mono">{gwUserClicks !== undefined ? Number(gwUserClicks).toLocaleString() : '...'}</span></div>
-							
-							 <div className="text-gray-300 mb-1 flex justify-between"><span>Blocks Won:</span> <span className="font-mono">{gwUserWins !== undefined ? Number(gwUserWins).toLocaleString() : '...'}</span></div>
-							 <div className="text-gray-300 mb-1 flex justify-between text-green-400"><span>Balance:</span> <span className="font-mono text-green-400">{gwBalance ? (Number(gwBalance) / 1e18).toLocaleString() : '...'}C</span></div>
-						</div>
+						<div className="text-gray-300 mb-1 flex justify-between"><span>Clicks:</span> <span className="font-mono">{
+							(userClicks !== null && gwUserClicks !== null)
+								? (Number(userClicks) + Number(gwUserClicks)).toLocaleString()
+								: (userClicks !== null ? Number(userClicks).toLocaleString() : (gwUserClicks !== null ? Number(gwUserClicks).toLocaleString() : '...'))
+						}</span></div>
+
+						<div className="text-gray-300 mb-1 flex justify-between"><span>Blocks Won:</span> <span className="font-mono">{
+							(userWins !== null && gwUserWins !== null)
+								? (Number(userWins) + Number(gwUserWins)).toLocaleString()
+								: (userWins !== null ? Number(userWins).toLocaleString() : (gwUserWins !== null ? Number(gwUserWins).toLocaleString() : '...'))
+						}</span></div>
+
+						<div className="text-gray-300 mb-1 flex justify-between text-green-400"><span>Balance (Wallet):</span> <span className="font-mono text-green-400">{userBalance ? (Number(userBalance) / 1e18).toLocaleString() : '...'}C</span></div>
+						<div className="text-gray-300 mb-1 flex justify-between text-green-400"><span>Balance (Game Wallet):</span> <span className="font-mono text-green-400">{gwBalance ? (Number(gwBalance) / 1e18).toLocaleString() : '...'}C</span></div>
 					</div>
 					<div className="bg-black/60 border-2 border-yellow-700 rounded-xl p-2 flex flex-col justify-up shadow-lg">
 						<h2 className="text-lg font-bold text-yellow-200 text-center">Info</h2>
