@@ -1458,30 +1458,198 @@ export const sgSAbiV2 = [
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "_amount",
-				"type": "uint256"
+				"internalType": "address",
+				"name": "vrfCoordinatorAddress",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_vaultAddress",
+				"type": "address"
 			}
 		],
-		"name": "decreaseReserve",
-		"outputs": [],
 		"stateMutability": "nonpayable",
-		"type": "function"
+		"type": "constructor"
+	},
+	{
+		"inputs": [],
+		"name": "BetNotFound",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "BetTooSmall",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "FailedToTransferStake",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "FeeTooHigh",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "InsufficientPayment",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "InvalidBulletCount",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "NewBPSExceedsMaxLimit",
+		"type": "error"
 	},
 	{
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "_userAddress",
+				"name": "sender",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "coordinator",
 				"type": "address"
 			}
 		],
-		"name": "gameWallet",
-		"outputs": [
+		"name": "OnlyVRFCoordinator",
+		"type": "error"
+	},
+	{
+		"inputs": [
 			{
 				"internalType": "address",
-				"name": "_ownerWallet",
+				"name": "owner",
 				"type": "address"
+			}
+		],
+		"name": "OwnableInvalidOwner",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "account",
+				"type": "address"
+			}
+		],
+		"name": "OwnableUnauthorizedAccount",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "PayoutExceedsLimit",
+		"type": "error"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "requestId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint8",
+				"name": "bullets",
+				"type": "uint8"
+			}
+		],
+		"name": "BetPlaced",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "requestId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "bool",
+				"name": "alive",
+				"type": "bool"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "spin",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "payout",
+				"type": "uint256"
+			}
+		],
+		"name": "BetResult",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "previousOwner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnershipTransferred",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "CALLBACK_GAS_LIMIT",
+		"outputs": [
+			{
+				"internalType": "uint32",
+				"name": "",
+				"type": "uint32"
 			}
 		],
 		"stateMutability": "view",
@@ -1489,7 +1657,7 @@ export const sgSAbiV2 = [
 	},
 	{
 		"inputs": [],
-		"name": "getLiquidity",
+		"name": "MAX_HOUSE_FEE_BPS",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -1502,7 +1670,7 @@ export const sgSAbiV2 = [
 	},
 	{
 		"inputs": [],
-		"name": "getReservedForBets",
+		"name": "MAX_PAYOUT_BPS",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -1516,61 +1684,263 @@ export const sgSAbiV2 = [
 	{
 		"inputs": [
 			{
+				"internalType": "uint8",
+				"name": "bullets",
+				"type": "uint8"
+			}
+		],
+		"name": "bet",
+		"outputs": [
+			{
 				"internalType": "uint256",
-				"name": "_amount",
+				"name": "requestId",
 				"type": "uint256"
 			}
 		],
-		"name": "increaseReserve",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "payable",
 		"type": "function"
 	},
 	{
 		"inputs": [
 			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "bets",
+		"outputs": [
+			{
 				"internalType": "address",
-				"name": "_winner",
+				"name": "player",
 				"type": "address"
 			},
 			{
 				"internalType": "uint256",
-				"name": "_amount",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint8",
+				"name": "bullets",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "houseFeeBps",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
 				"type": "uint256"
 			}
 		],
-		"name": "payout",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "liquidityVault",
+		"outputs": [
+			{
+				"internalType": "contract ILiquidityVault",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "maxPayoutBps",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "_userAddress",
+				"name": "",
 				"type": "address"
 			}
 		],
-		"name": "user",
+		"name": "playerInfo",
 		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "totalBetsAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalPayout",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalGamesPlayed",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "totalGamesWon",
+				"type": "uint256"
+			},
 			{
 				"internalType": "uint256",
 				"name": "totalReferrals",
 				"type": "uint256"
-			},
-			{
-				"internalType": "bytes32",
-				"name": "referralCode",
-				"type": "bytes32"
-			},
-			{
-				"internalType": "address",
-				"name": "referrer",
-				"type": "address"
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "requestId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "randomWords",
+				"type": "uint256[]"
+			}
+		],
+		"name": "rawFulfillRandomWords",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "registerMe",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "renounceOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_newFeeBps",
+				"type": "uint256"
+			}
+		],
+		"name": "setHouseFee",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_newBps",
+				"type": "uint256"
+			}
+		],
+		"name": "setMaxPayoutBps",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalBets",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalGamesPlayed",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalGamesWon",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalPayout",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "transferOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	}
 ]
