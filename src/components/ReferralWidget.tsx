@@ -1,10 +1,16 @@
-
+  // Helper for bytes32
+  function toBytes32(str: string): string {
+    const encoder = new TextEncoder();
+    let bytes = encoder.encode(str);
+    if (bytes.length > 32) bytes = bytes.slice(0, 32);
+    const padded = new Uint8Array(32);
+    padded.set(bytes);
+    return '0x' + Array.from(padded).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
 import React, { useState, useEffect } from 'react';
-import './ReferralWidget.css';
-import { useAccount, useChainId } from 'wagmi';
 import { ethers } from 'ethers';
-import { sgSAbi, chains } from '../constants';
-
+import { sgSAbi, chains } from '@/constants';
+import './ReferralWidget.css';
 
 const ReferralWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,52 +19,113 @@ const ReferralWidget = () => {
   const [myCode, setMyCode] = useState('');
   const [refCount, setRefCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const { address } = useAccount();
-  const chainId = useChainId();
+  // Replace with your chainId logic if needed
+  const chainId = 146;
+  const contractAddress = chains[chainId]?.pool;
+  const SONIC_RPC_URL = 'https://rpc.soniclabs.com';
 
-  // Get referral contract address from chains config (replace with correct key if needed)
-  const referralContractAddress = chains[chainId]?.pool;
 
-  useEffect(() => {
-    const fetchReferralInfo = async () => {
-      if (!address || !referralContractAddress) return;
-      setLoading(true);
-      try {
-        // Use default provider (can be replaced with custom RPC)
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const contract = new ethers.Contract(referralContractAddress, sgSAbi, provider);
-        // playerInfo returns: totalBetsAmount, totalPayout, totalGamesPlayed, totalGamesWon, totalReferrals
-        const info = await contract.playerInfo(address);
-        setRefCount(Number(info.totalReferrals || 0));
-        // If contract has getReferrer/getReferralCode, call them (example names)
-        if (contract.getReferrer) {
-          const referrer = await contract.getReferrer(address);
-          setMyReferrer(referrer);
-        }
-        if (contract.getReferralCode) {
-          const code = await contract.getReferralCode(address);
-          setMyCode(code);
-        }
-      } catch (err) {
-        // fallback: clear fields
-        setRefCount(0);
-        setMyReferrer('');
-        setMyCode('');
+  // Fetch user info from contract
+  // bytes32 to string
+  function bytes32ToString(hex: string): string {
+    if (!hex || hex === '—') return '—';
+    try {
+      let str = '';
+      if (hex.startsWith('0x')) {
+        str = Buffer.from(hex.replace(/^0x/, ''), 'hex').toString('utf8');
+      } else {
+        str = hex;
       }
-      setLoading(false);
-    };
-    fetchReferralInfo();
-  }, [address, referralContractAddress]);
+      return str.replace(/\u0000+$/, '').replace(/\0+$/, '');
+    } catch {
+      return hex;
+    }
+  }
 
-  const handleAccept = () => {
-    // TODO: implement contract call to accept referral code
-    setMyReferrer(inputCode);
-    setInputCode('');
+  const fetchUserInfo = async (address: string) => {
+    setLoading(true);
+    try {
+      const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
+      const contract = new ethers.Contract(contractAddress, sgSAbi, provider);
+      const user = await contract.user(address);
+      setRefCount(Number(user.totalReferrals));
+      setMyCode(user.referralCode ? bytes32ToString(user.referralCode) : '—');
+      // Ограничить длину адреса реферера
+      if (user.referrer && typeof user.referrer === 'string' && user.referrer.length > 10) {
+        setMyReferrer(user.referrer.slice(0, 6) + '...' + user.referrer.slice(-4));
+      } else {
+        setMyReferrer(user.referrer ? user.referrer : '—');
+      }
+    } catch (e) {
+      setRefCount(0);
+      setMyCode('—');
+      setMyReferrer('—');
+    }
+    setLoading(false);
   };
 
-  const handleCreate = () => {
-    // TODO: implement contract call to create referral code
-    setMyCode('NEWCODE123');
+  // Replace with your wallet logic
+  useEffect(() => {
+    if (isOpen) {
+      // Try to get address from wallet (wagmi, window.ethereum, etc.)
+      let address = '';
+      if (typeof window !== 'undefined' && window.ethereum && window.ethereum.selectedAddress) {
+        address = window.ethereum.selectedAddress;
+      }
+      // fallback: ask user to connect wallet or use wagmi
+      if (address) fetchUserInfo(address);
+    }
+  }, [isOpen]);
+
+  const handleAccept = async () => {
+    if (!inputCode) return;
+    setLoading(true);
+    try {
+      const bytes32 = toBytes32(inputCode);
+      let address = '';
+      let wallet;
+      if (typeof window !== 'undefined' && window.ethereum && window.ethereum.selectedAddress) {
+        address = window.ethereum.selectedAddress;
+        // Try to get signer from MetaMask
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        wallet = await provider.getSigner();
+      } else {
+        throw new Error('No wallet connected');
+      }
+      const contract = new ethers.Contract(contractAddress, sgSAbi, wallet);
+      const tx = await contract.applyReferralCode(bytes32);
+      await tx.wait();
+      setInputCode('');
+      fetchUserInfo(address);
+    } catch (e) {
+      // handle error
+    }
+    setLoading(false);
+  };
+
+  const handleCreate = async () => {
+    if (!inputCode) return;
+    setLoading(true);
+    try {
+      const bytes32 = toBytes32(inputCode);
+      let address = '';
+      let wallet;
+      if (typeof window !== 'undefined' && window.ethereum && window.ethereum.selectedAddress) {
+        address = window.ethereum.selectedAddress;
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        wallet = await provider.getSigner();
+      } else {
+        throw new Error('No wallet connected');
+      }
+      const contract = new ethers.Contract(contractAddress, sgSAbi, wallet);
+      const tx = await contract.createReferralCode(bytes32);
+      await tx.wait();
+      setInputCode('');
+      fetchUserInfo(address);
+    } catch (e) {
+      // handle error
+    }
+    setLoading(false);
   };
 
   return (
@@ -71,7 +138,7 @@ const ReferralWidget = () => {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 20 16" stroke="currentColor" strokeWidth="2">
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 2v2m0 0v2m0-2h2m-2 0H2m12 8v2m0 0v2m0-2h2m-2 0h-2M8 8v2m0 0v2m0-2h2m-2 0H6" />
           </svg>
-          <span className="leading-none flex items-center">Реф. система</span>
+          <span className="leading-none flex items-center">Referral System</span>
         </span>
       </button>
       {isOpen && (
@@ -101,9 +168,15 @@ const ReferralWidget = () => {
                 </div>
               </div>
               <div className="referral-info">
-                <div>My referrer: <span>{loading ? 'Loading...' : (myReferrer || '—')}</span></div>
-                <div>My code: <span>{loading ? 'Loading...' : (myCode || '—')}</span></div>
-                <div>My referrals: <span>{loading ? 'Loading...' : refCount}</span></div>
+                {loading ? (
+                  <div style={{ color: '#ff4c4c' }}>Loading...</div>
+                ) : (
+                  <>
+                    <div>My referrer: <span>{myReferrer || '—'}</span></div>
+                    <div>My code: <span>{myCode && myCode !== '—' ? myCode : '—'}</span></div>
+                    <div>My referrals: <span>{refCount}</span></div>
+                  </>
+                )}
               </div>
             </div>
           </div>

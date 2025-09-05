@@ -247,94 +247,8 @@ function scheduleBatchClick() {
 		 }
 	 },
  });
-// Referral System state
-const [refInput, setRefInput] = useState("");
-const [refLoading, setRefLoading] = useState(false);
-const [refError, setRefError] = useState<string | null>(null);
-const [yourReferrer, setYourReferrer] = useState<string | null>(null);
-const [referralsCount, setReferralsCount] = useState<number | null>(null);
-const [yourReferralCode, setYourReferralCode] = useState<string | null>(null);
-// Helper for bytes32
-function toBytes32(str: string): string {
-	const encoder = new TextEncoder();
-	let bytes = encoder.encode(str);
-	if (bytes.length > 32) bytes = bytes.slice(0, 32);
-	const padded = new Uint8Array(32);
-	padded.set(bytes);
-	return '0x' + Array.from(padded).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
 
-// Fetch referral info
-async function fetchReferralInfo() {
-	const selectedAddress = useGameWallet ? gameWalletAddress : address;
-	if (!pocAddress || !selectedAddress) return;
-	try {
-		const ref = await readContract(config, { abi: pocAbi, address: pocAddress, functionName: 'referrerOf', args: [selectedAddress] });
-		const refStr = typeof ref === 'string' ? ref : '';
-		setYourReferrer(refStr && refStr !== '0x0000000000000000000000000000000000000000' ? refStr : null);
-		// Fetch your referral code
-		const code = await readContract(config, { abi: pocAbi, address: pocAddress, functionName: 'referralCodeOf', args: [selectedAddress] });
-		let codeStr = '';
-		if (typeof code === 'string' && code !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
-			// Convert bytes32 to string (strip trailing zeros)
-			codeStr = Buffer.from(code.replace(/^0x/, ''), 'hex').toString('utf8').replace(/\u0000+$/, '').replace(/\0+$/, '');
-		}
-		setYourReferralCode(codeStr || null);
-	// Get totalReferrals from totalUserReferrals mapping
-	const totalReferrals = await readContract(config, { abi: pocAbi, address: pocAddress, functionName: 'totalUserReferrals', args: [selectedAddress] });
-	setReferralsCount(Number(totalReferrals));
-	} catch {}
-}
-useEffect(() => { fetchReferralInfo(); }, [pocAddress, address, gameWalletAddress, useGameWallet]);
-
-// Apply referral code
-async function handleApplyReferral() {
-	setRefError(null); setRefLoading(true);
-	try {
-		const bytes32 = toBytes32(refInput);
-		if (useGameWallet) {
-			// Use Game Wallet for referral
-			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
-			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
-			const wallet = new Wallet(sessionKey, provider);
-			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
-			await contract.applyReferralCode(bytes32);
-		} else {
-			await writeContract(config, { abi: pocAbi, address: pocAddress, functionName: 'applyReferralCode', args: [bytes32] });
-		}
-		toast.success('Referral code applied!');
-		setRefInput("");
-		fetchReferralInfo();
-	} catch (e: any) {
-		setRefError(e?.message || 'Error applying referral code');
-	}
-	setRefLoading(false);
-}
-// Create referral code
-async function handleCreateReferral() {
-	setRefError(null); setRefLoading(true);
-	try {
-		const bytes32 = toBytes32(refInput);
-		if (useGameWallet) {
-			// Use Game Wallet for referral
-			const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gameWalletSessionKey') : null;
-			if (!sessionKey) throw new Error('Game Wallet is not unlocked');
-			const provider = new ethers.JsonRpcProvider(SONIC_RPC_URL);
-			const wallet = new Wallet(sessionKey, provider);
-			const contract = new ethers.Contract(pocAddress, pocAbi, wallet);
-			await contract.createReferralCode(bytes32);
-		} else {
-			await writeContract(config, { abi: pocAbi, address: pocAddress, functionName: 'createReferralCode', args: [bytes32] });
-		}
-		toast.success('Referral code created!');
-		setRefInput("");
-		fetchReferralInfo();
-	} catch (e: any) {
-		setRefError(e?.message || 'Error creating referral code');
-	}
-	setRefLoading(false);
-}
+ 
 const [gwUserClicks, setGwUserClicks] = useState<number|null>(null);
 const [gwUserWins, setGwUserWins] = useState<number|null>(null);
 const [userBalance, setUserBalance] = useState<number|null>(null);
@@ -635,43 +549,6 @@ const { data: nextHalvingRound } = useReadContract({ abi: pocAbi, address: pocAd
 							<span className="font-bold">{tvl} S{tvlUSD !== '...' ? ` / ${tvlUSD} $` : ''}</span>
 						</div>
 					</div>
-										<div className="w-half max-w-4xl mb-8">
-												<div className="bg-black/60 border-2 mt-1.5 border-yellow-700 rounded-xl p-2 flex flex-col gap-2" style={{ minWidth: '350px', maxWidth: '700px', width: '100%' }}>
-														<h3 className="text-yellow-300 text-lg font-bold mb-1 text-center">Referral System</h3>
-														<div className="flex flex-col md:flex-row gap-2 items-center justify-center">
-																<input
-																	type="text"
-																	maxLength={32}
-																	className="text-center bg-black/80 border border-gray-700 text-gray-100 rounded-lg py-1 text-base font-mono focus:outline-none"
-																	style={{ width: '520px', paddingLeft: 0, paddingRight: 0, fontFamily: 'monospace' }}
-																	placeholder="Enter referral code"
-																	value={refInput}
-																	onChange={e => setRefInput(e.target.value)}
-																	disabled={refLoading}
-																/>
-														</div>
-														<button
-															className="px-4 py-1.5 mt-1 bg-gradient-to-r from-green-700 to-green-900 border border-green-500 rounded-lg text-xs text-white font-bold shadow hover:from-green-600 hover:to-green-800 transition-all duration-150 disabled:opacity-60"
-															disabled={refLoading || !refInput}
-															onClick={handleApplyReferral}
-														>{refLoading ? 'Applying...' : 'Apply'}</button>
-														<button
-															className="px-4 py-1.5 mt-1 bg-gradient-to-r from-yellow-700 to-yellow-900 border border-yellow-500 rounded-lg text-xs text-white font-bold shadow hover:from-yellow-600 hover:to-yellow-800 transition-all duration-150 disabled:opacity-60"
-															disabled={refLoading || !refInput}
-															onClick={handleCreateReferral}
-														>{refLoading ? 'Creating...' : 'Create'}</button>
-														{refError && (<div className="text-xs text-red-400 font-mono mt-1">{refError}</div>)}
-														<div className="text-gray-300 text-sm mt-0">Your referrer: <span className="font-mono text-yellow-200">{yourReferrer ? `${yourReferrer.slice(0, 8)}...${yourReferrer.slice(-4)}` : '---'}</span></div>
-														<div className="text-gray-300 text-sm mt-0">Referrals: <span className="font-mono text-yellow-200">{referralsCount !== null ? referralsCount : 0}</span></div>
-														<div className="text-gray-300 text-sm mt-0">Your code: {yourReferralCode ? (
-															<span
-																className="font-mono text-yellow-200 cursor-pointer underline hover:text-yellow-400"
-																title="Click to copy"
-																onClick={() => { navigator.clipboard.writeText(yourReferralCode); }}
-															>{yourReferralCode}</span>
-														) : <span className="font-mono text-gray-500">---</span>}</div>
-												</div>
-										</div>
 				</div>
 				{/* Proof Of Click */}
 					<div className="bg-black/60 border-1 border-red-700 rounded-xl p-8 w-full md:basis-2/5 md:max-w-[40%] shadow-lg flex flex-col justify-start order-1">
