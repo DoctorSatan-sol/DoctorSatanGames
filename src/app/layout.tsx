@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 
 import { GameWallet } from '@/components/GameWallet';
 import { GameWalletProvider } from '@/components/GameWalletContext';
+import BottomWidgets from '@/components/BottomWidgets';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -24,9 +25,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <link href="https://fonts.googleapis.com/css2?family=Creepster&display=swap" rel="stylesheet" />
             <Header />
             {children}
-            <div className="fixed bottom-5 right-5 z-50">
-              <GameWallet />
-            </div>
+            <BottomWidgets />
           </Providers>
         </GameWalletProvider>
       </body>

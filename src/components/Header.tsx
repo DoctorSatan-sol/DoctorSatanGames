@@ -87,11 +87,11 @@ export default function Header() {
 
         {/* Правая часть - кнопки с эффектом ржавых гвоздей */}
         <div className="ml-auto flex items-center gap-2">
-          <div style={{ transform: 'scale(0.95)', marginRight: '0.5rem' }}>
+          <div style={{ transform: 'scale(0.95)' }}>
             <FancyCheckbox
               checked={useGameWallet}
               onChange={e => setUseGameWallet(e.target.checked)}
-              label="Use Game Wallet"
+              label="Game Wallet"
             />
           </div>
           <Link

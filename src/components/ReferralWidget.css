@@ -1,0 +1,119 @@
+.referral-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: #222;
+  color: #fff;
+  border-radius: 12px;
+  padding: 18px 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  min-width: 280px;
+  gap: 16px;
+}
+
+
+.referral-input-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.referral-input-group input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #333;
+  color: #fff;
+}
+
+
+.referral-input-group button {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
+  background: #ff4c4c;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+  margin-left: 0;
+  box-shadow: 0 2px 8px rgba(255,76,76,0.15);
+}
+
+.referral-input-group button:hover {
+  background: #ff2222;
+}
+
+.referral-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 15px;
+}
+
+.referral-info span {
+  font-weight: bold;
+  color: #ff4c4c;
+}
+
+.referral-open-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 2px solid #ff4c4c;
+  background: #222;
+  color: #ff4c4c;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255,76,76,0.15);
+  transition: background 0.2s, color 0.2s;
+}
+.referral-open-btn:hover {
+  background: #ff2222;
+  color: #fff;
+}
+
+.referral-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.referral-modal {
+  background: #222;
+  border: 2px solid #ff4c4c;
+  border-radius: 16px;
+  box-shadow: 0 4px 32px rgba(255,76,76,0.25);
+  padding: 32px 28px 24px 28px;
+  min-width: 340px;
+  max-width: 95vw;
+  position: relative;
+}
+.referral-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #ff4c4c;
+  margin-bottom: 18px;
+}
+.referral-close-btn {
+  background: none;
+  border: none;
+  color: #ff4c4c;
+  font-size: 2rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 8px;
+  transition: color 0.2s;
+}
+.referral-close-btn:hover {
+  color: #fff;
+}
+
