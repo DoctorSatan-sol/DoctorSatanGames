@@ -626,84 +626,15 @@ export const erc20Abi = [
     },
 ]
 export const chainlinkAbi = [{"inputs":[{"internalType":"address","name":"_aggregator","type":"address"},{"internalType":"address","name":"_accessController","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"int256","name":"current","type":"int256"},{"indexed":true,"internalType":"uint256","name":"roundId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"updatedAt","type":"uint256"}],"name":"AnswerUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"roundId","type":"uint256"},{"indexed":true,"internalType":"address","name":"startedBy","type":"address"},{"indexed":false,"internalType":"uint256","name":"startedAt","type":"uint256"}],"name":"NewRound","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"}],"name":"OwnershipTransferRequested","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"inputs":[],"name":"acceptOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"accessController","outputs":[{"internalType":"contract AccessControllerInterface","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"aggregator","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_aggregator","type":"address"}],"name":"confirmAggregator","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"description","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_roundId","type":"uint256"}],"name":"getAnswer","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint80","name":"_roundId","type":"uint80"}],"name":"getRoundData","outputs":[{"internalType":"uint80","name":"roundId","type":"uint80"},{"internalType":"int256","name":"answer","type":"int256"},{"internalType":"uint256","name":"startedAt","type":"uint256"},{"internalType":"uint256","name":"updatedAt","type":"uint256"},{"internalType":"uint80","name":"answeredInRound","type":"uint80"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_roundId","type":"uint256"}],"name":"getTimestamp","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"latestAnswer","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"latestRound","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"latestRoundData","outputs":[{"internalType":"uint80","name":"roundId","type":"uint80"},{"internalType":"int256","name":"answer","type":"int256"},{"internalType":"uint256","name":"startedAt","type":"uint256"},{"internalType":"uint256","name":"updatedAt","type":"uint256"},{"internalType":"uint80","name":"answeredInRound","type":"uint80"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"latestTimestamp","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address payable","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint16","name":"","type":"uint16"}],"name":"phaseAggregators","outputs":[{"internalType":"contract AggregatorV2V3Interface","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"phaseId","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_aggregator","type":"address"}],"name":"proposeAggregator","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"proposedAggregator","outputs":[{"internalType":"contract AggregatorV2V3Interface","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint80","name":"_roundId","type":"uint80"}],"name":"proposedGetRoundData","outputs":[{"internalType":"uint80","name":"roundId","type":"uint80"},{"internalType":"int256","name":"answer","type":"int256"},{"internalType":"uint256","name":"startedAt","type":"uint256"},{"internalType":"uint256","name":"updatedAt","type":"uint256"},{"internalType":"uint80","name":"answeredInRound","type":"uint80"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"proposedLatestRoundData","outputs":[{"internalType":"uint80","name":"roundId","type":"uint80"},{"internalType":"int256","name":"answer","type":"int256"},{"internalType":"uint256","name":"startedAt","type":"uint256"},{"internalType":"uint256","name":"updatedAt","type":"uint256"},{"internalType":"uint80","name":"answeredInRound","type":"uint80"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_accessController","type":"address"}],"name":"setController","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_to","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"version","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}]
-export const sgSAbi = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[],"name":"AccessControlBadConfirmation","type":"error"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"bytes32","name":"neededRole","type":"bytes32"}],"name":"AccessControlUnauthorizedAccount","type":"error"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"allowance","type":"uint256"},{"internalType":"uint256","name":"needed","type":"uint256"}],"name":"ERC20InsufficientAllowance","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"uint256","name":"balance","type":"uint256"},{"internalType":"uint256","name":"needed","type":"uint256"}],"name":"ERC20InsufficientBalance","type":"error"},{"inputs":[{"internalType":"address","name":"approver","type":"address"}],"name":"ERC20InvalidApprover","type":"error"},{"inputs":[{"internalType":"address","name":"receiver","type":"address"}],"name":"ERC20InvalidReceiver","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"}],"name":"ERC20InvalidSender","type":"error"},{"inputs":[{"internalType":"address","name":"spender","type":"address"}],"name":"ERC20InvalidSpender","type":"error"},{"inputs":[],"name":"EthTransferFailed","type":"error"},{"inputs":[],"name":"InsufficientAssetsForShares","type":"error"},{"inputs":[],"name":"NotEnoughBalanceForPayout","type":"error"},{"inputs":[],"name":"SNotSent","type":"error"},{"inputs":[],"name":"ZeroShares","type":"error"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"role","type":"bytes32"},{"indexed":true,"internalType":"bytes32","name":"previousAdminRole","type":"bytes32"},{"indexed":true,"internalType":"bytes32","name":"newAdminRole","type":"bytes32"}],"name":"RoleAdminChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"role","type":"bytes32"},{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"sender","type":"address"}],"name":"RoleGranted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"role","type":"bytes32"},{"indexed":true,"internalType":"address","name":"account","type":"address"},{"indexed":true,"internalType":"address","name":"sender","type":"address"}],"name":"RoleRevoked","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[],"name":"DEFAULT_ADMIN_ROLE","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"OWNER_ROLE","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwnerContract","type":"address"}],"name":"addOwner","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_user","type":"address"}],"name":"getBalance","outputs":[{"internalType":"uint256","name":"balance","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getLiquidity","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"}],"name":"getRoleAdmin","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"grantRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"hasRole","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"_winner","type":"address"},{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"payout","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"ownerContract","type":"address"}],"name":"removeOwner","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"callerConfirmation","type":"address"}],"name":"renounceRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"revokeRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"stake","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"bytes4","name":"interfaceId","type":"bytes4"}],"name":"supportsInterface","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_shares","type":"uint256"}],"name":"unstake","outputs":[],"stateMutability":"nonpayable","type":"function"},{"stateMutability":"payable","type":"receive"}]
-export const sgSAbiV2 = [
+export const sgSAbi = [
 	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "vrfCoordinatorAddress",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "_vaultAddress",
-				"type": "address"
-			}
-		],
+		"inputs": [],
 		"stateMutability": "nonpayable",
 		"type": "constructor"
 	},
 	{
 		"inputs": [],
-		"name": "BetNotFound",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "BetTooSmall",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "FailedToTransferStake",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "FeeTooHigh",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InsufficientPayment",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidBulletCount",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "NewBPSExceedsMaxLimit",
-		"type": "error"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "sender",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "coordinator",
-				"type": "address"
-			}
-		],
-		"name": "OnlyVRFCoordinator",
-		"type": "error"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "owner",
-				"type": "address"
-			}
-		],
-		"name": "OwnableInvalidOwner",
+		"name": "AccessControlBadConfirmation",
 		"type": "error"
 	},
 	{
@@ -712,436 +643,19 @@ export const sgSAbiV2 = [
 				"internalType": "address",
 				"name": "account",
 				"type": "address"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "neededRole",
+				"type": "bytes32"
 			}
 		],
-		"name": "OwnableUnauthorizedAccount",
+		"name": "AccessControlUnauthorizedAccount",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "PayoutExceedsLimit",
-		"type": "error"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "requestId",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "player",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint8",
-				"name": "bullets",
-				"type": "uint8"
-			}
-		],
-		"name": "BetPlaced",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "requestId",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "player",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "bool",
-				"name": "alive",
-				"type": "bool"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "spin",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "payout",
-				"type": "uint256"
-			}
-		],
-		"name": "BetResult",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "previousOwner",
-				"type": "address"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "newOwner",
-				"type": "address"
-			}
-		],
-		"name": "OwnershipTransferred",
-		"type": "event"
-	},
-	{
-		"inputs": [],
-		"name": "CALLBACK_GAS_LIMIT",
-		"outputs": [
-			{
-				"internalType": "uint32",
-				"name": "",
-				"type": "uint32"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "MAX_HOUSE_FEE_BPS",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "MAX_PAYOUT_BPS",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint8",
-				"name": "bullets",
-				"type": "uint8"
-			}
-		],
-		"name": "bet",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "requestId",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "payable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "bets",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "player",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint8",
-				"name": "bullets",
-				"type": "uint8"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "houseFeeBps",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "liquidityVault",
-		"outputs": [
-			{
-				"internalType": "contract ILiquidityVault",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "maxPayoutBps",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "owner",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "playerInfo",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "totalBetsAmount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "totalPayout",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "totalGamesPlayed",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "totalGamesWon",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "totalReferrals",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "requestId",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256[]",
-				"name": "randomWords",
-				"type": "uint256[]"
-			}
-		],
-		"name": "rawFulfillRandomWords",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "registerMe",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "renounceOwnership",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_newFeeBps",
-				"type": "uint256"
-			}
-		],
-		"name": "setHouseFee",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_newBps",
-				"type": "uint256"
-			}
-		],
-		"name": "setMaxPayoutBps",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "totalBets",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "totalGamesPlayed",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "totalGamesWon",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "totalPayout",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "newOwner",
-				"type": "address"
-			}
-		],
-		"name": "transferOwnership",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	}
-]
-export const pocAbi = [
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "vrfCoordinatorAddress",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "_vaultAddress",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "FeeManager",
-				"type": "address"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"inputs": [],
-		"name": "BatchSizeMustBePositive",
+		"name": "CannotBeOwnReferrer",
 		"type": "error"
 	},
 	{
@@ -1232,63 +746,52 @@ export const pocAbi = [
 	},
 	{
 		"inputs": [],
-		"name": "FeeTooLow",
+		"name": "EthTransferFailed",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "FeeTransferFailed",
+		"name": "InsufficientAssetsForShares",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "InsufficientContractBalance",
+		"name": "InsufficientReserve",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "InsufficientValueForBatch",
+		"name": "NotEnoughBalanceForPayout",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "InvalidBatchSize",
+		"name": "ReferralCodeAlreadyExists",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "MaxBatchSizeExceeded",
+		"name": "ReferralCodeNotFound",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "NothingToBurn",
-		"type": "error"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "sender",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "coordinator",
-				"type": "address"
-			}
-		],
-		"name": "OnlyVRFCoordinator",
+		"name": "ReferrerAlreadySet",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "RefundFailed",
+		"name": "SNotSent",
 		"type": "error"
 	},
 	{
 		"inputs": [],
-		"name": "TransferFailed",
+		"name": "UserAlreadyHasCode",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "ZeroShares",
 		"type": "error"
 	},
 	{
@@ -1321,24 +824,24 @@ export const pocAbi = [
 		"inputs": [
 			{
 				"indexed": true,
-				"internalType": "address",
-				"name": "burner",
-				"type": "address"
+				"internalType": "bytes32",
+				"name": "role",
+				"type": "bytes32"
 			},
 			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "previousAdminRole",
+				"type": "bytes32"
 			},
 			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ethOut",
-				"type": "uint256"
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "newAdminRole",
+				"type": "bytes32"
 			}
 		],
-		"name": "Burned",
+		"name": "RoleAdminChanged",
 		"type": "event"
 	},
 	{
@@ -1346,18 +849,24 @@ export const pocAbi = [
 		"inputs": [
 			{
 				"indexed": true,
-				"internalType": "uint256",
-				"name": "roundId",
-				"type": "uint256"
+				"internalType": "bytes32",
+				"name": "role",
+				"type": "bytes32"
 			},
 			{
 				"indexed": true,
 				"internalType": "address",
-				"name": "player",
+				"name": "account",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "sender",
 				"type": "address"
 			}
 		],
-		"name": "Clicked",
+		"name": "RoleGranted",
 		"type": "event"
 	},
 	{
@@ -1365,30 +874,24 @@ export const pocAbi = [
 		"inputs": [
 			{
 				"indexed": true,
-				"internalType": "uint256",
-				"name": "requestId",
-				"type": "uint256"
+				"internalType": "bytes32",
+				"name": "role",
+				"type": "bytes32"
 			},
 			{
 				"indexed": true,
-				"internalType": "uint256",
-				"name": "roundId",
-				"type": "uint256"
+				"internalType": "address",
+				"name": "account",
+				"type": "address"
 			},
 			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "playersCount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "reward",
-				"type": "uint256"
+				"indexed": true,
+				"internalType": "address",
+				"name": "sender",
+				"type": "address"
 			}
 		],
-		"name": "RoundRequested",
+		"name": "RoleRevoked",
 		"type": "event"
 	},
 	{
@@ -1417,93 +920,42 @@ export const pocAbi = [
 		"type": "event"
 	},
 	{
-		"anonymous": false,
+		"inputs": [],
+		"name": "DEFAULT_ADMIN_ROLE",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "OWNER_ROLE",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "requestId",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
-				"internalType": "uint256",
-				"name": "roundId",
-				"type": "uint256"
-			},
-			{
-				"indexed": true,
 				"internalType": "address",
-				"name": "winner",
+				"name": "newOwnerContract",
 				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
 			}
 		],
-		"name": "WinnerMinted",
-		"type": "event"
-	},
-	{
-		"inputs": [],
-		"name": "CALLBACK_GAS_LIMIT",
-		"outputs": [
-			{
-				"internalType": "uint32",
-				"name": "",
-				"type": "uint32"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "HALVING_INTERVAL_ROUNDS",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "INITIAL_REWARD",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "ROUND_DURATION",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "_click",
+		"name": "addOwner",
 		"outputs": [],
-		"stateMutability": "payable",
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -1528,6 +980,19 @@ export const pocAbi = [
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_code",
+				"type": "bytes32"
+			}
+		],
+		"name": "applyReferralCode",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -1576,40 +1041,14 @@ export const pocAbi = [
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "n",
-				"type": "uint256"
+				"internalType": "bytes32",
+				"name": "_code",
+				"type": "bytes32"
 			}
 		],
-		"name": "batchClick",
-		"outputs": [],
-		"stateMutability": "payable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "burn",
+		"name": "createReferralCode",
 		"outputs": [],
 		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "currentReward",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -1626,66 +1065,27 @@ export const pocAbi = [
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "feeManager",
-		"outputs": [
+		"inputs": [
 			{
-				"internalType": "contract IFeeManager",
-				"name": "",
-				"type": "address"
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
 			}
 		],
-		"stateMutability": "view",
+		"name": "decreaseReserve",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "_roundId",
-				"type": "uint256"
-			}
-		],
-		"name": "getPlayersCountInRound",
-		"outputs": [
-			{
-				"internalType": "uint256",
+				"internalType": "address",
 				"name": "",
-				"type": "uint256"
+				"type": "address"
 			}
 		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "lastHalvingRound",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "lastRoundTs",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "liquidityVault",
+		"name": "gameWallet",
 		"outputs": [
 			{
 				"internalType": "address",
@@ -1698,7 +1098,7 @@ export const pocAbi = [
 	},
 	{
 		"inputs": [],
-		"name": "maxSupply",
+		"name": "getReservedForBets",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -1707,6 +1107,80 @@ export const pocAbi = [
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "role",
+				"type": "bytes32"
+			}
+		],
+		"name": "getRoleAdmin",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "role",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "address",
+				"name": "account",
+				"type": "address"
+			}
+		],
+		"name": "grantRole",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "role",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "address",
+				"name": "account",
+				"type": "address"
+			}
+		],
+		"name": "hasRole",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			}
+		],
+		"name": "increaseReserve",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -1723,85 +1197,35 @@ export const pocAbi = [
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "nextHalvingRound",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "playerCount",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "players",
-		"outputs": [
 			{
 				"internalType": "address",
-				"name": "",
+				"name": "_winner",
 				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "requestId",
-				"type": "uint256"
 			},
 			{
-				"internalType": "uint256[]",
-				"name": "randomWords",
-				"type": "uint256[]"
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
 			}
 		],
-		"name": "rawFulfillRandomWords",
+		"name": "payout",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "referralSystem",
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"name": "referralCodeOwner",
 		"outputs": [
 			{
-				"internalType": "contract IReferralSystem",
+				"internalType": "address",
 				"name": "",
 				"type": "address"
 			}
@@ -1817,13 +1241,88 @@ export const pocAbi = [
 		"type": "function"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "ownerContract",
+				"type": "address"
+			}
+		],
+		"name": "removeOwner",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "role",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "address",
+				"name": "callerConfirmation",
+				"type": "address"
+			}
+		],
+		"name": "renounceRole",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [],
-		"name": "roundId",
+		"name": "reservedForBets",
 		"outputs": [
 			{
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "role",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "address",
+				"name": "account",
+				"type": "address"
+			}
+		],
+		"name": "revokeRole",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "stake",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes4",
+				"name": "interfaceId",
+				"type": "bytes4"
+			}
+		],
+		"name": "supportsInterface",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
 			}
 		],
 		"stateMutability": "view",
@@ -1844,58 +1343,7 @@ export const pocAbi = [
 	},
 	{
 		"inputs": [],
-		"name": "totalClicks",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
 		"name": "totalSupply",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "totalUserClicks",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "totalUserWins",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -1960,7 +1408,178 @@ export const pocAbi = [
 		"type": "function"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_shares",
+				"type": "uint256"
+			}
+		],
+		"name": "unstake",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "user",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "totalReferrals",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "referralCode",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "address",
+				"name": "referrer",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"stateMutability": "payable",
 		"type": "receive"
+	}
+]
+export const sgSAbiV2 = [
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			}
+		],
+		"name": "decreaseReserve",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_userAddress",
+				"type": "address"
+			}
+		],
+		"name": "gameWallet",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "_ownerWallet",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getLiquidity",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getReservedForBets",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			}
+		],
+		"name": "increaseReserve",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_winner",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			}
+		],
+		"name": "payout",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_userAddress",
+				"type": "address"
+			}
+		],
+		"name": "user",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "totalReferrals",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "referralCode",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "address",
+				"name": "referrer",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]
+export const pocAbi = [
+	{
+		"inputs": [],
+		"name": "claim",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
 	}
 ]
