@@ -68,7 +68,6 @@ export default function ProofOfClickUI() {
 	}, []);
 
 	// For totalUserClicks, totalUserReferrals, totalUserWins you need the user address, can be added later via useAccount
-	// ...existing code...
 	// История событий (ошибки и транзакции)
 	const [eventHistory, setEventHistory] = useState<{ type: 'error', message: string, time: number }[]>([]);
 	const [showDetails, setShowDetails] = React.useState(false);
@@ -400,7 +399,6 @@ const { data: nextHalvingRound } = useReadContract({ abi: pocAbi, address: pocAd
 	 const { data: lastRoundTs } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "lastRoundTs", query: { enabled: !!pocAddress } });
 	 const { data: liquidityShare } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "LIQUIDITY_SHARE", query: { enabled: !!pocAddress } });
 	 const { data: liquidityVault } = useReadContract({ abi: pocAbi, address: pocAddress, functionName: "liquidityVault", query: { enabled: !!pocAddress } });
-		// ...existing code...
 
 		const [isClicking, setIsClicking] = useState(false);
 
@@ -409,7 +407,6 @@ const { data: nextHalvingRound } = useReadContract({ abi: pocAbi, address: pocAd
 			setPendingClicks(c => c + 1);
 			scheduleBatchClick();
 		}
-	// ...existing code...
 	// Disable click button only for regular wallet
 	const clickDisabled = useGameWallet ? false : isClicking;
 

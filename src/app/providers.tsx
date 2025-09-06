@@ -2,14 +2,13 @@
 import { darkTheme } from '@rainbow-me/rainbowkit';
 
 const customTheme = darkTheme({
-    accentColor: '#991b1b', // более яркий красный
-    accentColorForeground: '#ffffff', // белый текст для контраста
+    accentColor: '#991b1b', 
+    accentColorForeground: '#ffffff',
     borderRadius: 'large',
     fontStack: 'system',
     overlayBlur: 'small',
   });
   
-  // Кровавые цвета
   customTheme.colors.accentColor = '#dc2626';
   customTheme.colors.accentColorForeground = '#fecaca';
   customTheme.colors.actionButtonBorder = '#ef4444';

@@ -55,7 +55,6 @@ function decodeContractError(error: any, abi: any[]): string {
 }
 
 export default function RussianRoulette() {
-    // ...existing code...
     // Error bar at bottom
     const { useGameWallet } = useGameWalletContext();
 
@@ -65,7 +64,6 @@ export default function RussianRoulette() {
     const rouletteAddress = chains[chainId]?.roulette as `0x${string}`;
     const rouletteAbi = sgSAbiV2;
     const SONIC_RPC_URL = 'https://sonic-rpc.publicnode.com';
-    // ...existing code...
     
 
     const TOTAL_CHAMBERS = 6;
